@@ -3,10 +3,19 @@
   "displayName": "beads-ui",
   "description": "An unofficial VSCode extension to make it working with beads easier",
   "version": "0.0.1",
+  "author": {
+    "name": "DEVtheOPS"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/DEVtheOPS/beads-ui-vscode-ext",
   "repository": {
     "type": "git",
-    "url": "git@github.com:DEVtheOPS/beads-ui-vscode-ext.git"
+    "url": "https://github.com/DEVtheOPS/beads-ui-vscode-ext"
   },
+  "bugs": {
+    "url": "https://github.com/DEVtheOPS/beads-ui-vscode-ext/issues"
+  },
+  "publisher": "devtheops",
   "engines": {
     "vscode": "^1.106.0"
   },
@@ -60,7 +69,8 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "deploy": "vsce publish"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
