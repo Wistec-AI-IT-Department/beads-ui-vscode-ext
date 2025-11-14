@@ -2,7 +2,7 @@
   "name": "beads-ui",
   "displayName": "beads-ui",
   "description": "An unofficial VSCode extension to make it working with beads easier",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": {
     "name": "DEVtheOPS"
   },
