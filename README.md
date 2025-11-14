@@ -1,71 +1,136 @@
-# beads-ui README
+# Beads UI
 
-This is the README for your extension "beads-ui". After writing up a brief description, we recommend including the following sections.
+A VSCode extension that provides a user-friendly interface for working with [beads](https://github.com/steveyegge/beads) - a dependency-aware issue tracker where issues are chained together like beads.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- **Activity Bar View**: Browse all beads issues in a dedicated sidebar panel
+- **Issue List**: View, search, and filter issues by status and text
+- **Issue Details**: Click any issue to open a detailed view with full information
+- **Dependency Visualization**: See related issues, dependencies, and dependents at a glance
+- **Theme Integration**: Fully adapts to your VSCode theme (dark, light, or high contrast)
+- **Real-time Filtering**: Search issues by ID, title, or description
+- **Status-based Filtering**: Filter issues by status (open, closed, in_progress, blocked)
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- **VSCode**: Version 1.106.0 or higher
+- **beads CLI**: The `bd` command must be available on your PATH
+  - Install beads from [github.com/steveyegge/beads](https://github.com/steveyegge/beads)
+  - Ensure `bd` is accessible from your terminal
+- **Workspace**: Open a workspace folder that contains a `.beads` directory with an initialized beads database
+
+## Installation
+
+### From Source
+
+1. Clone this repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Build the extension:
+   ```bash
+   npm run compile
+   ```
+4. Press `F5` in VSCode to launch the Extension Development Host
+
+## Usage
+
+1. Open a workspace that has beads initialized (contains a `.beads/` directory)
+2. Click the Beads icon in the Activity Bar (sidebar)
+3. Browse issues in the list view
+4. Use the search box to filter by text
+5. Use the status dropdown to filter by status
+6. Click any issue to open detailed information in a new panel
+7. Click related issues in the detail view to navigate between dependencies
+
+## Development
+
+### Project Structure
+
+```
+src/
+├── extension.ts                    # Extension entry point
+├── types.ts                        # TypeScript interfaces
+├── services/
+│   └── beadsIssueService.ts       # Beads CLI interaction
+├── views/
+│   ├── issuesViewProvider.ts      # Sidebar issues list
+│   └── issueDetailPanelManager.ts # Detail panel manager
+└── utils/
+    ├── templateRenderer.ts        # Template engine wrapper
+    └── helpers.ts                 # Utility functions
+
+media/
+├── issuesView.edge                # Issues list template
+└── issueDetail.edge               # Issue detail template
+```
+
+### Building
+
+```bash
+# Install dependencies
+npm install
+
+# Compile TypeScript and bundle with webpack
+npm run compile
+
+# Watch mode for development
+npm run watch
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
+
+# Create production build
+npm run package
+```
+
+### Testing the Extension
+
+1. Open this project in VSCode
+2. Press `F5` to launch the Extension Development Host
+3. Open a workspace that has a beads database initialized
+4. The extension will activate automatically
+
+### Debugging
+
+1. Set breakpoints in the TypeScript source files
+2. Press `F5` to start debugging
+3. The debugger will attach to the Extension Development Host
+4. Check the Debug Console for logs and errors
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+This extension does not currently add any VSCode settings.
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- The extension requires the `bd` CLI to be installed and available on PATH
+- Currently read-only - creating and updating issues must be done via the `bd` CLI
+- Large issue lists may take a moment to load
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
+Initial release:
+- Activity bar view for browsing beads issues
+- Search and filter functionality
+- Detailed issue view with dependencies
+- Full theme integration
 
-Initial release of ...
+## Contributing
 
-### 1.0.1
+This extension uses:
+- TypeScript for type safety
+- Webpack for bundling
+- Edge.js for templating
+- VSCode's Webview API for custom UI
 
-Fixed issue #.
+## License
 
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+See LICENSE file for details.
