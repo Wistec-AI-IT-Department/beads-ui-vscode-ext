@@ -6,25 +6,27 @@
 
 [![License](https://img.shields.io/github/license/DEVtheOPS/beads-ui-vscode-ext)](LICENSE)
 
-A VSCode extension that provides a user-friendly interface for working with [beads](https://github.com/steveyegge/beads) - a dependency-aware issue tracker where issues are chained together like beads.
+A VSCode extension that provides a rich, native UI for working with [beads](https://github.com/steveyegge/beads) - a dependency-aware issue tracker where issues are chained together like beads, perfect for AI-supervised workflows.
 
 ## Features
 
-- **Activity Bar View**: Browse all beads issues in a dedicated sidebar panel
-- **Issue List**: View, search, and filter issues by status and text
+- **Activity Bar View**: Browse all beads issues in a dedicated sidebar panel with blazing-fast performance
+- **Advanced Filtering**: Multi-select filters for status (open, in_progress, blocked, closed) and type (bug, feature, task, epic, chore)
+- **Smart Search**: Search issues by ID, title, or description in real-time
 - **Issue Details**: Click any issue to open a detailed view with full information
-- **Dependency Visualization**: See related issues, dependencies, and dependents at a glance
-- **Theme Integration**: Fully adapts to your VSCode theme (dark, light, or high contrast)
-- **Real-time Filtering**: Search issues by ID, title, or description
-- **Status-based Filtering**: Filter issues by status (open, closed, in_progress, blocked)
+- **Epic Subtasks**: Automatically displays subtasks for epic issues in the related issues section
+- **Dependency Visualization**: See related issues, dependencies, dependents, and epic subtasks at a glance
+- **Theme Integration**: Fully adapts to your VSCode theme using native VSCode UI components
+- **Responsive Design**: Toolbar adapts to panel width with intelligent wrapping
+- **Fast Performance**: Direct SQLite database access for instant issue loading
 
 ## Requirements
 
 - **VSCode**: Version 1.106.0 or higher
-- **beads CLI**: The `bd` command must be available on your PATH
+- **beads**: A beads-initialized workspace
   - Install beads from [github.com/steveyegge/beads](https://github.com/steveyegge/beads)
-  - Ensure `bd` is accessible from your terminal
-- **Workspace**: Open a workspace folder that contains a `.beads` directory with an initialized beads database
+  - Initialize beads in your project: `bd init`
+- **Workspace**: Open a workspace folder that contains a `.beads` directory with a beads database
 
 ## Installation
 
@@ -47,13 +49,20 @@ A VSCode extension that provides a user-friendly interface for working with [bea
 
 ## Usage
 
-1. Open a workspace that has beads initialized (contains a `.beads/` directory)
-2. Click the Beads icon in the Activity Bar (sidebar)
-3. Browse issues in the list view
-4. Use the search box to filter by text
-5. Use the status dropdown to filter by status
-6. Click any issue to open detailed information in a new panel
-7. Click related issues in the detail view to navigate between dependencies
+1. **Open a beads workspace**: Open a folder that has beads initialized (contains a `.beads/` directory)
+2. **Access the Beads view**: Click the Beads icon in the Activity Bar (left sidebar)
+3. **Browse issues**: View all issues in the searchable list
+4. **Filter issues**:
+   - Use the search box to filter by ID, title, or description
+   - Use the status multi-select to filter by status (open, in_progress, blocked, closed)
+   - Use the type multi-select to filter by type (bug, feature, task, epic, chore)
+5. **Refresh**: Click the Refresh button to reload issues from the database
+6. **View details**: Click any issue to open a detailed panel with:
+   - Full description and metadata
+   - Related issues (dependencies, dependents)
+   - Epic subtasks (for epic issues)
+   - Raw JSON data
+7. **Navigate**: Click related issues in the detail view to navigate between dependencies and subtasks
 
 ## Development
 

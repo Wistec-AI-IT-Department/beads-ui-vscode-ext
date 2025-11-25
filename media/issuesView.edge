@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta http-equiv="Content-Security-Policy" content="{{csp}}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="module" nonce="{{nonce}}" src="{{vscodeElementsUri}}"></script>
 <style>
   body {
     font-family: var(--vscode-font-family);
@@ -16,25 +17,33 @@
   }
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
+    align-items: flex-start;
   }
-  .toolbar input,
-  .toolbar select {
-    flex: 1;
+  .toolbar input {
+    flex: 1 1 150px;
+    min-width: 0;
     padding: 0.3rem 0.4rem;
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border, transparent);
     border-radius: 4px;
   }
+  .toolbar vscode-multi-select {
+    flex: 0 1 auto;
+    min-width: 140px;
+  }
   .toolbar button {
+    flex: 0 0 auto;
     padding: 0 0.8rem;
     background: var(--vscode-button-secondaryBackground);
     border: 1px solid var(--vscode-button-border, transparent);
     color: var(--vscode-button-secondaryForeground);
     border-radius: 4px;
     cursor: pointer;
+    white-space: nowrap;
   }
   .toolbar button:hover {
     background: var(--vscode-button-secondaryHoverBackground);
@@ -85,9 +94,19 @@
 <body>
   <div class="toolbar">
     <input id="beads-search" type="search" placeholder="Search by title, id, or text" />
-    <select id="beads-status">
-      <option value="all">All statuses</option>
-    </select>
+    <vscode-multi-select id="beads-status">
+      <vscode-option value="open" selected>Open</vscode-option>
+      <vscode-option value="in_progress" selected>In Progress</vscode-option>
+      <vscode-option value="blocked" selected>Blocked</vscode-option>
+      <vscode-option value="closed" selected>Closed</vscode-option>
+    </vscode-multi-select>
+    <vscode-multi-select id="beads-type">
+      <vscode-option value="bug" selected>Bug</vscode-option>
+      <vscode-option value="feature" selected>Feature</vscode-option>
+      <vscode-option value="task" selected>Task</vscode-option>
+      <vscode-option value="epic" selected>Epic</vscode-option>
+      <vscode-option value="chore" selected>Chore</vscode-option>
+    </vscode-multi-select>
     <button id="beads-refresh" type="button">Refresh</button>
   </div>
   <div id="beads-loading" class="loading hidden">Loading issues…</div>
@@ -99,6 +118,7 @@
       const vscode = acquireVsCodeApi();
       const searchInput = document.getElementById('beads-search');
       const statusSelect = document.getElementById('beads-status');
+      const typeSelect = document.getElementById('beads-type');
       const refreshButton = document.getElementById('beads-refresh');
       const listEl = document.getElementById('beads-list');
       const emptyEl = document.getElementById('beads-empty');
@@ -127,35 +147,18 @@
         return text;
       }
 
-      function updateStatuses() {
-        const existing = new Set();
-        const selected = statusSelect.value;
-        const options = ['all'];
-        issues.forEach((issue) => {
-          const status = toLower(issue.status);
-          if (status && !existing.has(status)) {
-            options.push(status);
-            existing.add(status);
-          }
-        });
-        statusSelect.innerHTML = options
-          .map((status) => {
-            const label = status === 'all' ? 'All statuses' : status.replace(/_/g, ' ');
-            const selectedAttr = status === selected ? 'selected' : '';
-            return `<option value="${status}" ${selectedAttr}>${label}</option>`;
-          })
-          .join('');
-      }
-
       function renderList() {
         const query = toLower(searchInput.value.trim());
-        const statusFilter = statusSelect.value;
+        const statusFilters = statusSelect.value || [];
+        const typeFilters = typeSelect.value || [];
+
         const filtered = issues.filter((issue) => {
           const combined = [issue.id, issue.title, issue.description, issue.text, issue.notes]
             .map(toLower)
             .some((value) => value.includes(query));
-          const matchesStatus = statusFilter === 'all' || toLower(issue.status) === statusFilter;
-          return (!query || combined) && matchesStatus;
+          const matchesStatus = statusFilters.length === 0 || statusFilters.includes(toLower(issue.status));
+          const matchesType = typeFilters.length === 0 || typeFilters.includes(toLower(issue.type));
+          return (!query || combined) && matchesStatus && matchesType;
         });
 
         listEl.innerHTML = '';
@@ -217,7 +220,6 @@
         switch (event.data?.type) {
           case 'issues':
             issues = Array.isArray(event.data.payload) ? event.data.payload : [];
-            updateStatuses();
             setError('');
             renderList();
             break;
@@ -232,9 +234,23 @@
         }
       });
 
-      refreshButton.addEventListener('click', () => vscode.postMessage({ type: 'refresh' }));
+      // Wait for custom elements to be defined before attaching listeners
+      customElements.whenDefined('vscode-multi-select').then(() => {
+        statusSelect.addEventListener('change', () => {
+          console.log('Status changed:', statusSelect.value);
+          renderList();
+        });
+        typeSelect.addEventListener('change', () => {
+          console.log('Type changed:', typeSelect.value);
+          renderList();
+        });
+      });
+
+      refreshButton.addEventListener('click', () => {
+        console.log('Refresh clicked');
+        vscode.postMessage({ type: 'refresh' });
+      });
       searchInput.addEventListener('input', renderList);
-      statusSelect.addEventListener('change', renderList);
 
       vscode.postMessage({ type: 'ready' });
     })();

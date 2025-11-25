@@ -2,7 +2,53 @@
 
 ## Project Overview
 
-This is a VSCode extension that provides a UI for working with beads inside VSCode. Beads (bd) is a dependency-aware issue tracker where issues are chained together like beads, perfect for AI-supervised workflows.
+This is a VSCode extension that provides a rich UI for working with [beads](https://github.com/steveyegge/beads) inside VSCode. Beads (bd) is a dependency-aware issue tracker where issues are chained together like beads, perfect for AI-supervised workflows.
+
+### What This Extension Does
+
+- **Activity Bar View**: Browse all issues in a searchable, filterable list
+- **Issue Detail Panels**: View complete issue details including description, metadata, and related issues
+- **Epic Subtasks**: Automatically displays subtasks for epic issues in the related issues section
+- **Multi-Select Filters**: Filter by status (open, in_progress, blocked, closed) and type (bug, feature, task, epic, chore)
+- **Fast Performance**: Direct SQLite database access for blazing-fast issue loading
+- **Native VSCode UI**: Uses VSCode's native UI components for consistent theming
+
+### Technologies Used
+
+- **TypeScript**: Primary development language
+- **VSCode Extension API**: Core extension framework
+- **sql.js**: WebAssembly-based SQLite for reading beads database
+- **Edge.js**: Templating engine for webview HTML
+- **@vscode-elements/elements**: VSCode native UI components (multi-select, buttons, etc.)
+- **Webpack**: Bundling and build system
+- **Mocha**: Testing framework
+
+### Architecture
+
+```
+src/
+├── extension.ts              # Extension entry point
+├── services/
+│   └── beadsIssueService.ts  # SQLite database access layer
+├── views/
+│   ├── issuesViewProvider.ts       # Activity bar issues list view
+│   └── issueDetailPanelManager.ts  # Issue detail panel manager
+├── utils/
+│   ├── helpers.ts            # Utility functions
+│   └── templateRenderer.ts   # Edge.js template rendering
+└── types.ts                  # TypeScript type definitions
+
+media/
+├── issuesView.edge           # Issues list webview template
+└── issueDetail.edge          # Issue detail webview template
+```
+
+### Key Implementation Details
+
+- **Database Access**: Uses sql.js (pure JavaScript/WebAssembly) instead of native modules to avoid Node.js version compatibility issues
+- **Epic Subtasks**: Queries database for hierarchical IDs (e.g., `epic-id.1`, `epic-id.2`) to find subtasks
+- **Webview Communication**: Bidirectional messaging between extension and webviews for issue navigation
+- **CSP-Compliant**: All webviews use Content Security Policy with nonces for script execution
 
 ## Before You Start
 

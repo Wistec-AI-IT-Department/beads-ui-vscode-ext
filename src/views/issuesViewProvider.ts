@@ -11,7 +11,8 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly templates: TemplateRenderer,
     private readonly issueService: BeadsIssueService,
-    private readonly openIssue: (issueId: string) => Promise<void>
+    private readonly openIssue: (issueId: string) => Promise<void>,
+    private readonly extensionUri: vscode.Uri
   ) {}
 
   resolveWebviewView(webviewView: vscode.WebviewView) {
@@ -96,6 +97,21 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
       `script-src 'nonce-${nonce}'`,
     ].join("; ");
 
-    return this.templates.render("issuesView", { nonce, csp });
+    const vscodeElementsUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this.extensionUri,
+        "node_modules",
+        "@vscode-elements",
+        "elements",
+        "dist",
+        "bundled.js"
+      )
+    );
+
+    return this.templates.render("issuesView", {
+      nonce,
+      csp,
+      vscodeElementsUri: vscodeElementsUri.toString(),
+    });
   }
 }

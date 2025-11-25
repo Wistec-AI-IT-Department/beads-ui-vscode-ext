@@ -21,6 +21,15 @@ export function extractRelatedIssuesFromIssue(issue: BdIssue): BdIssue[] {
     }
   }
 
+  // Extract from subtasks array (for epics)
+  if (Array.isArray(issue.subtasks)) {
+    for (const subtask of issue.subtasks) {
+      if (subtask && typeof subtask === "object") {
+        relatedIssues.push(subtask as BdIssue);
+      }
+    }
+  }
+
   return relatedIssues;
 }
 

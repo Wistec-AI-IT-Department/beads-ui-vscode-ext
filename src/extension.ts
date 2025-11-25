@@ -6,17 +6,23 @@ import { TemplateRenderer } from "./utils/templateRenderer";
 
 export function activate(context: vscode.ExtensionContext) {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  const issueService = new BeadsIssueService(workspaceRoot);
+  const issueService = new BeadsIssueService(workspaceRoot, context.extensionPath);
   const templates = new TemplateRenderer(context.extensionUri);
   const detailManager = new IssueDetailPanelManager(issueService, templates);
-  const viewProvider = new IssuesViewProvider(templates, issueService, async (issueId) => {
-    await detailManager.show(issueId);
-  });
+  const viewProvider = new IssuesViewProvider(
+    templates,
+    issueService,
+    async (issueId) => {
+      await detailManager.show(issueId);
+    },
+    context.extensionUri
+  );
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider("beadsIssues.list", viewProvider),
     vscode.commands.registerCommand("beads-ui.refreshIssues", () => viewProvider.refreshIssues()),
-    detailManager
+    detailManager,
+    { dispose: () => issueService.dispose() }
   );
 
   console.log("Beads UI extension activated");

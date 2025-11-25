@@ -16,4 +16,5 @@ export interface BdIssue {
   dependencies?: unknown;
   dependents?: unknown;
   deps?: unknown;
+  subtasks?: BdIssue[];
 }
