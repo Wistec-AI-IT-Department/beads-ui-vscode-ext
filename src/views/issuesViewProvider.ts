@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { BdIssue } from "../types";
+import { BdIssue, SearchFilters } from "../types";
 import { BeadsIssueService } from "../services/beadsIssueService";
 import { TemplateRenderer } from "../utils/templateRenderer";
 import { getNonce } from "../utils/helpers";
@@ -7,6 +7,13 @@ import { getNonce } from "../utils/helpers";
 export class IssuesViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private issues: BdIssue[] = [];
+  private filters: SearchFilters = {
+    search: "",
+    statuses: ["open", "in_progress", "blocked", "closed"],
+    types: ["bug", "feature", "task", "epic", "chore"],
+    sortField: "created_at" as const,
+    sortDir: "desc" as const,
+  };
 
   constructor(
     private readonly templates: TemplateRenderer,
@@ -30,9 +37,17 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message?.type) {
         case "ready":
-          this.postIssues();
+          await this.refreshIssues();
           break;
         case "refresh":
+          await this.refreshIssues();
+          break;
+        case "newIssue":
+          await this.createAndOpenIssue();
+          break;
+        case "filtersChanged":
+          this.updateFilters(message.payload);
+          this.issueService.setFilters(this.filters);
           await this.refreshIssues();
           break;
         case "openIssue":
@@ -45,12 +60,28 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
       }
     });
 
-    this.postIssues();
     void this.refreshIssues();
   }
 
   async refreshIssues() {
     await this.loadIssues();
+  }
+
+  async toggleSort() {
+    // this.issueService.sor
+    console.log("Beads UI toggle sort");
+    await this.loadIssues();
+  }
+
+  async createAndOpenIssue() {
+    try {
+      const created = await this.issueService.createIssue();
+      await this.refreshIssues();
+      await this.openIssue(String(created.id));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(message);
+    }
   }
 
   private async loadIssues() {
@@ -86,6 +117,30 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.view.webview.postMessage({ type: "loading", payload: isLoading });
+  }
+
+  private updateFilters(payload: Partial<typeof this.filters>) {
+    if (!payload) {
+      return;
+    }
+    this.filters = {
+      ...this.filters,
+      ...payload,
+      statuses:
+        Array.isArray(payload.statuses) && payload.statuses.length
+          ? payload.statuses
+          : this.filters.statuses,
+      types:
+        Array.isArray(payload.types) && payload.types.length
+          ? payload.types
+          : this.filters.types,
+      sortField: (payload as any).sortField ?? this.filters.sortField,
+      sortDir: (payload as any).sortDir ?? this.filters.sortDir,
+      search:
+        typeof payload.search === "string"
+          ? payload.search
+          : this.filters.search,
+    } as typeof this.filters;
   }
 
   private async getHtmlForWebview(webview: vscode.Webview) {

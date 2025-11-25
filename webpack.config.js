@@ -20,14 +20,21 @@ const extensionConfig = {
         filename: 'extension.js',
         libraryTarget: 'commonjs2'
     },
-    externals: {
-        vscode: 'commonjs vscode', // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
-        'sql.js': 'commonjs sql.js' // sql.js should not be bundled due to WASM dependencies
-        // modules added here also need to be added in the .vscodeignore file
-    },
+    externalsPresets: { node: true },
+    externalsType: 'commonjs',
+    externals: [
+        {
+            vscode: 'commonjs vscode',
+            '@vscode/sqlite3': 'commonjs @vscode/sqlite3'
+        },
+        /^@vscode\/sqlite3(\/.*)?$/
+    ],
+    ignoreWarnings: [
+        /Critical dependency: the request of a dependency is an expression/
+    ],
     resolve: {
         // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-        extensions: ['.ts', '.js']
+        extensions: ['.ts', '.js', '.mjs']
     },
     module: {
         rules: [
@@ -36,7 +43,10 @@ const extensionConfig = {
                 exclude: /node_modules/,
                 use: [
                     {
-                        loader: 'ts-loader'
+                        loader: 'ts-loader',
+                        options: {
+                            onlyCompileBundledFiles: true
+                        }
                     },
                     // {
                     //     loader: 'html-loader',
@@ -58,18 +68,6 @@ const extensionConfig = {
     infrastructureLogging: {
         level: "log", // enables logging required for problem matchers
     },
-    plugins: [
-        new CopyWebpackPlugin({
-            patterns: [
-                {
-                    from: 'node_modules/sql.js/dist',
-                    to: 'sql-wasm',
-                    globOptions: {
-                        ignore: ['**/*.d.ts', '**/*.ts']
-                    }
-                }
-            ]
-        })
-    ]
+    plugins: []
 };
 module.exports = [extensionConfig];

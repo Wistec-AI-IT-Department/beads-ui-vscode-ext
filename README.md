@@ -6,7 +6,7 @@
 
 [![License](https://img.shields.io/github/license/DEVtheOPS/beads-ui-vscode-ext)](LICENSE)
 
-A VSCode extension that provides a rich, native UI for working with [beads](https://github.com/steveyegge/beads) - a dependency-aware issue tracker where issues are chained together like beads, perfect for AI-supervised workflows.
+A unofficial VSCode extension that provides a rich, native UI for working with [beads](https://github.com/steveyegge/beads) - a dependency-aware issue tracker where issues are chained together like beads, perfect for AI-supervised workflows.
 
 ## Features
 

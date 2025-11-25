@@ -31,9 +31,51 @@ export class IssueDetailPanelManager implements vscode.Disposable {
       this.panels.delete(issueId);
     });
 
-    panel.webview.onDidReceiveMessage((message) => {
-      if (message?.type === "openIssue" && typeof message.id === "string" && message.id.length) {
-        void this.show(message.id);
+    panel.webview.onDidReceiveMessage(async (message) => {
+      switch (message?.type) {
+        case "openIssue":
+          if (typeof message.id === "string" && message.id.length) {
+            await this.show(message.id);
+          }
+          break;
+        case "saveIssue":
+          if (typeof message.id === "string" && message.id.length) {
+            try {
+              await this.issueService.updateIssue(message.id, {
+                title: message.updates?.title,
+                status: message.updates?.status,
+                priority: message.updates?.priority,
+                assignee: message.updates?.assignee,
+                description: message.updates?.description,
+              });
+
+              vscode.window.showInformationMessage(`Saved ${message.id}`);
+              await vscode.commands.executeCommand("beads-ui.refreshIssues");
+              await this.updatePanel(panel, message.id);
+            } catch (error) {
+              const messageText = error instanceof Error ? error.message : String(error);
+              vscode.window.showErrorMessage(messageText);
+              panel.webview.postMessage({ type: "saveError", payload: messageText });
+            }
+          }
+          break;
+        case "addSubIssue":
+          if (typeof message.parentId === "string" && message.parentId.length) {
+            try {
+              const created = await this.issueService.createSubIssue(message.parentId);
+              vscode.window.showInformationMessage(`Created ${created.id}`);
+              await vscode.commands.executeCommand("beads-ui.refreshIssues");
+              await this.updatePanel(panel, message.parentId);
+              await this.show(String(created.id));
+            } catch (error) {
+              const messageText = error instanceof Error ? error.message : String(error);
+              vscode.window.showErrorMessage(messageText);
+              panel.webview.postMessage({ type: "addSubIssueError", payload: messageText });
+            }
+          }
+          break;
+        default:
+          break;
       }
     });
 
@@ -123,6 +165,7 @@ export class IssueDetailPanelManager implements vscode.Disposable {
     const assignee = String(issue.assignee ?? "Unassigned");
     const descriptionHtml = formatDescription(issue);
     const rawJson = JSON.stringify(issue, null, 2);
+    const isEpic = issue.issue_type === "epic" || issue.type === "epic";
 
     const relatedIssuesViewModel = relatedIssues.map((related) => ({
       id: String(related.id ?? ""),
@@ -146,6 +189,7 @@ export class IssueDetailPanelManager implements vscode.Disposable {
       relatedIssues: relatedIssuesViewModel,
       rawJson,
       issue,
+      isEpic,
     };
   }
 }

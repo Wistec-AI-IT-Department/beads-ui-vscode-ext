@@ -70,6 +70,56 @@
       font-weight: 500;
     }
 
+    .meta-item select,
+    .meta-item input,
+    .meta-item textarea {
+      width: 100%;
+      box-sizing: border-box;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, var(--vscode-editorWidget-border));
+      border-radius: 4px;
+      padding: 0.45rem 0.55rem;
+      font: inherit;
+    }
+
+    .meta-item textarea {
+      resize: vertical;
+      min-height: 140px;
+      line-height: 1.4;
+    }
+
+    .meta-item.wide {
+      grid-column: 1 / -1;
+    }
+
+    .form-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: -0.25rem;
+    }
+
+    .muted {
+      color: var(--vscode-descriptionForeground);
+      font-size: 0.9rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .related-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
     .description {
       white-space: pre-wrap;
       line-height: 1.6;
@@ -115,9 +165,9 @@
 
     .link-button {
       appearance: none;
-      background: var(--vscode-button-background);
+      background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
       border: none;
-      color: var(--vscode-button-foreground);
+      color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
       cursor: pointer;
       padding: 0.4rem 0.8rem;
       font: inherit;
@@ -128,6 +178,12 @@
 
     .link-button:hover {
       background: var(--vscode-button-hoverBackground);
+    }
+
+    .link-button.primary {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: 1px solid var(--vscode-button-border, transparent);
     }
 
     .status-badge {
@@ -209,20 +265,58 @@
   <div class="state error">Failed to load {{ issueId }}: {{ errorMessage }}</div>
   @elseif(viewState === 'ready' && detail)
   <h1>{{ detail.title }} ({{ detail.id }})</h1>
-  <div class="meta-grid">
-    @each((meta) in detail.meta)
-    <div class="meta-item">
-      <label>{{ meta.label }}</label>
-      <div>{{ meta.value }}</div>
+  <form id="issue-form" data-issue-id="{{ detail.id }}" class="meta-grid editable">
+    <div class="meta-item wide">
+      <label for="issue-title">Title</label>
+      <input id="issue-title" name="title" type="text" value="{{ detail.issue.title || '' }}" placeholder="Issue title" />
     </div>
-    @endeach
-  </div>
+    <div class="meta-item">
+      <label for="issue-status">Status</label>
+      <select id="issue-status" name="status">
+        <option value="open" @if(detail.issue.status === 'open')selected@endif>Open</option>
+        <option value="in_progress" @if(detail.issue.status === 'in_progress')selected@endif>In Progress</option>
+        <option value="blocked" @if(detail.issue.status === 'blocked')selected@endif>Blocked</option>
+        <option value="closed" @if(detail.issue.status === 'closed')selected@endif>Closed</option>
+      </select>
+    </div>
+    <div class="meta-item">
+      <label for="issue-priority">Priority</label>
+      <select id="issue-priority" name="priority">
+        <option value="0" @if(detail.issue.priority === 0)selected@endif>P0</option>
+        <option value="1" @if(detail.issue.priority === 1)selected@endif>P1</option>
+        <option value="2" @if(detail.issue.priority === 2 || detail.issue.priority === undefined)selected@endif>P2</option>
+        <option value="3" @if(detail.issue.priority === 3)selected@endif>P3</option>
+        <option value="4" @if(detail.issue.priority === 4)selected@endif>P4</option>
+      </select>
+    </div>
+    <div class="meta-item">
+      <label for="issue-assignee">Assignee</label>
+      <input id="issue-assignee" name="assignee" type="text" value="{{ detail.issue.assignee || '' }}" placeholder="username" />
+    </div>
+    <div class="meta-item wide">
+      <label for="issue-description">Description</label>
+      <textarea id="issue-description" name="description" rows="6">{{ detail.issue.description || detail.issue.text || '' }}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="link-button primary" id="issue-save">Save</button>
+      <span id="save-status" class="muted"></span>
+    </div>
+  </form>
+
   <section>
-    <h2>Description</h2>
+    <h2>Preview</h2>
     <div class="description">{{{ detail.descriptionHtml }}}</div>
   </section>
   <section>
-    <h2>Related Issues</h2>
+    <div class="section-header">
+      <h2>Related Issues</h2>
+      @if(detail.isEpic)
+      <div class="related-actions">
+        <button type="button" class="link-button" id="add-sub-issue">+ Add sub-issue</button>
+        <span class="muted">Creates {{ detail.id }}.N</span>
+      </div>
+      @endif
+    </div>
     @if(detail.relatedIssues.length)
     <table>
       <thead>
@@ -260,20 +354,70 @@
   <div class="state">Unknown viewState: {{ viewState }}</div>
   @endif
   <script nonce="{{nonce}}">
-    const vscode = acquireVsCodeApi();
-    document.addEventListener('click', (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      const trigger = target.closest('[data-issue-id]');
-      if (trigger) {
-        const issueId = trigger.getAttribute('data-issue-id');
-        if (issueId) {
-          vscode.postMessage({ type: 'openIssue', id: issueId });
+    (function() {
+      const vscode = acquireVsCodeApi();
+      const form = document.getElementById('issue-form');
+      const saveButton = document.getElementById('issue-save');
+      const saveStatus = document.getElementById('save-status');
+      const titleInput = document.getElementById('issue-title');
+      const statusSelect = document.getElementById('issue-status');
+      const prioritySelect = document.getElementById('issue-priority');
+      const assigneeInput = document.getElementById('issue-assignee');
+      const descriptionInput = document.getElementById('issue-description');
+      const addSubIssue = document.getElementById('add-sub-issue');
+      const issueId = form?.getAttribute('data-issue-id');
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
         }
+        const trigger = target.closest('[data-issue-id]');
+        if (trigger && trigger !== form) {
+          const childId = trigger.getAttribute('data-issue-id');
+          if (childId) {
+            vscode.postMessage({ type: 'openIssue', id: childId });
+          }
+        }
+      });
+
+      if (form && issueId) {
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          saveButton?.setAttribute('disabled', 'true');
+          saveStatus.textContent = 'Saving…';
+
+          vscode.postMessage({
+            type: 'saveIssue',
+            id: issueId,
+            updates: {
+              title: titleInput?.value ?? '',
+              status: statusSelect?.value,
+              priority: Number(prioritySelect?.value ?? 2),
+              assignee: assigneeInput?.value?.trim() ?? '',
+              description: descriptionInput?.value ?? ''
+            }
+          });
+        });
       }
-    });
+
+      if (addSubIssue && issueId) {
+        addSubIssue.addEventListener('click', () => {
+          addSubIssue.setAttribute('disabled', 'true');
+          vscode.postMessage({ type: 'addSubIssue', parentId: issueId });
+        });
+      }
+
+      window.addEventListener('message', (event) => {
+        if (event.data?.type === 'saveError') {
+          saveButton?.removeAttribute('disabled');
+          saveStatus.textContent = event.data.payload || 'Save failed';
+        } else if (event.data?.type === 'addSubIssueError') {
+          addSubIssue?.removeAttribute('disabled');
+          saveStatus.textContent = event.data.payload || 'Unable to create sub-issue';
+        }
+      });
+    })();
   </script>
 </body>
 

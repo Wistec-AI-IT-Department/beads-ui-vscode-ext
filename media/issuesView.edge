@@ -1,125 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta http-equiv="Content-Security-Policy" content="{{csp}}">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script type="module" nonce="{{nonce}}" src="{{vscodeElementsUri}}"></script>
-<style>
-  body {
-    font-family: var(--vscode-font-family);
-    font-size: var(--vscode-font-size);
-    color: var(--vscode-foreground);
-    background-color: transparent;
-    margin: 0;
-    padding: 0.75rem;
-    box-sizing: border-box;
-  }
-  .toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    align-items: flex-start;
-  }
-  .toolbar input {
-    flex: 1 1 150px;
-    min-width: 0;
-    padding: 0.3rem 0.4rem;
-    background: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-input-border, transparent);
-    border-radius: 4px;
-  }
-  .toolbar vscode-multi-select {
-    flex: 0 1 auto;
-    min-width: 140px;
-  }
-  .toolbar button {
-    flex: 0 0 auto;
-    padding: 0 0.8rem;
-    background: var(--vscode-button-secondaryBackground);
-    border: 1px solid var(--vscode-button-border, transparent);
-    color: var(--vscode-button-secondaryForeground);
-    border-radius: 4px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .toolbar button:hover {
-    background: var(--vscode-button-secondaryHoverBackground);
-  }
-  .issues {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .issue {
-    padding: 0.6rem;
-    border: 1px solid var(--vscode-editorWidget-border);
-    border-radius: 4px;
-    background: var(--vscode-editorWidget-background);
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .issue:focus,
-  .issue:hover {
-    outline: none;
-    background: var(--vscode-list-hoverBackground);
-    border-color: var(--vscode-focusBorder);
-  }
-  .issue-title {
-    font-weight: 600;
-    margin-bottom: 0.2rem;
-  }
-  .issue-meta {
-    font-size: 0.85rem;
-    color: var(--vscode-descriptionForeground);
-    margin-bottom: 0.3rem;
-  }
-  .empty,
-  .error,
-  .loading {
-    text-align: center;
-    padding: 1rem;
-    color: var(--vscode-descriptionForeground);
-  }
-  .hidden {
-    display: none;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="{{csp}}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script type="module" nonce="{{nonce}}" src="{{vscodeElementsUri}}"></script>
+  <style>
+    body {
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
+      color: var(--vscode-foreground);
+      background-color: transparent;
+      margin: 0;
+      padding: 0.75rem;
+      box-sizing: border-box;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      align-items: flex-start;
+      position: relative;
+    }
+
+    .search-shell {
+      flex: 1 1 auto;
+      min-width: 260px;
+      position: relative;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .search-shell input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 0.3rem 3.5rem 0.3rem 0.4rem;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, transparent);
+      border-radius: 4px;
+    }
+
+    .search-actions {
+      position: absolute;
+      right: 0.15rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.15rem;
+    }
+
+    .toolbar button {
+      flex: 0 0 auto;
+      padding: 0 0.8rem;
+      background: var(--vscode-button-secondaryBackground);
+      border: 1px solid var(--vscode-button-border, transparent);
+      color: var(--vscode-button-secondaryForeground);
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .toolbar button:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .issues {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .issue {
+      padding: 0.6rem;
+      border: 1px solid var(--vscode-editorWidget-border);
+      border-radius: 4px;
+      background: var(--vscode-editorWidget-background);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .issue:focus,
+    .issue:hover {
+      outline: none;
+      background: var(--vscode-list-hoverBackground);
+      border-color: var(--vscode-focusBorder);
+    }
+
+    .issue-title {
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+
+    .issue-meta {
+      font-size: 0.85rem;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 0.3rem;
+    }
+
+    .empty,
+    .error,
+    .loading {
+      text-align: center;
+      padding: 1rem;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .combo {
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, var(--vscode-editorWidget-border));
+      border-radius: 4px;
+      padding: 0.3rem 0.5rem;
+      height: 32px;
+    }
+
+    .icon-button {
+      height: 32px;
+      width: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--vscode-input-border, var(--vscode-editorWidget-border));
+      border-radius: 4px;
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      cursor: pointer;
+    }
+
+    .icon-button:hover {
+      background: var(--vscode-button-secondaryHoverBackground);
+    }
+
+    .popover {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 0.35rem);
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-editorWidget-border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      max-width: 360px;
+      z-index: 5;
+    }
+
+    .popover.hidden {
+      display: none;
+    }
+
+    .popover-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .popover-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .popover-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .popover label {
+      font-size: 0.9rem;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .sort-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .popover .combo {
+      flex: 1 1 auto;
+    }
+  </style>
 </head>
+
 <body>
   <div class="toolbar">
-    <input id="beads-search" type="search" placeholder="Search by title, id, or text" />
-    <vscode-multi-select id="beads-status">
-      <vscode-option value="open" selected>Open</vscode-option>
-      <vscode-option value="in_progress" selected>In Progress</vscode-option>
-      <vscode-option value="blocked" selected>Blocked</vscode-option>
-      <vscode-option value="closed" selected>Closed</vscode-option>
-    </vscode-multi-select>
-    <vscode-multi-select id="beads-type">
-      <vscode-option value="bug" selected>Bug</vscode-option>
-      <vscode-option value="feature" selected>Feature</vscode-option>
-      <vscode-option value="task" selected>Task</vscode-option>
-      <vscode-option value="epic" selected>Epic</vscode-option>
-      <vscode-option value="chore" selected>Chore</vscode-option>
-    </vscode-multi-select>
-    <button id="beads-refresh" type="button">Refresh</button>
+    <div class="search-shell">
+      <input id="beads-search" type="search" placeholder="Search by title, id, or text" />
+      <div class="search-actions">
+        <button id="beads-search-clear" class="icon-button" type="button" title="Clear search">✕</button>
+        <button id="beads-filter-toggle" class="icon-button" type="button" title="Filters & sort">☰</button>
+      </div>
+    </div>
+    <div id="beads-filter-panel" class="popover hidden" role="menu">
+      <div class="popover-header">
+        <strong>Filters & Sort</strong>
+        <button id="beads-filter-close" class="icon-button" type="button" aria-label="Close filters">✕</button>
+      </div>
+      <div class="popover-section">
+        <label for="beads-sort-field">Sort by</label>
+        <div class="sort-row">
+          <select id="beads-sort-field" class="combo">
+            <option value="created_at" selected>Created</option>
+            <option value="updated_at">Updated</option>
+            <option value="closed_at">Closed</option>
+            <option value="title">Title</option>
+            <option value="id">Ticket ID</option>
+          </select>
+          <button id="beads-sort-direction" class="icon-button" type="button" title="Toggle sort direction">▼</button>
+        </div>
+      </div>
+      <div class="popover-section">
+        <label>Status</label>
+        <vscode-multi-select id="beads-status">
+          <vscode-option value="open" selected>Open</vscode-option>
+          <vscode-option value="in_progress" selected>In Progress</vscode-option>
+          <vscode-option value="blocked" selected>Blocked</vscode-option>
+          <vscode-option value="closed" selected>Closed</vscode-option>
+        </vscode-multi-select>
+      </div>
+      <div class="popover-section">
+        <label>Type</label>
+        <vscode-multi-select id="beads-type">
+          <vscode-option value="bug" selected>Bug</vscode-option>
+          <vscode-option value="feature" selected>Feature</vscode-option>
+          <vscode-option value="task" selected>Task</vscode-option>
+          <vscode-option value="epic" selected>Epic</vscode-option>
+          <vscode-option value="chore" selected>Chore</vscode-option>
+        </vscode-multi-select>
+      </div>
+    </div>
   </div>
   <div id="beads-loading" class="loading hidden">Loading issues…</div>
   <div id="beads-error" class="error hidden"></div>
   <div id="beads-empty" class="empty hidden">No issues to display.</div>
   <ul id="beads-list" class="issues" aria-live="polite"></ul>
   <script nonce="{{nonce}}">
-    (function() {
+    (function () {
       const vscode = acquireVsCodeApi();
       const searchInput = document.getElementById('beads-search');
+      const searchClear = document.getElementById('beads-search-clear');
+      const filterToggle = document.getElementById('beads-filter-toggle');
+      const filterClose = document.getElementById('beads-filter-close');
+      const filterPanel = document.getElementById('beads-filter-panel');
+      const sortField = document.getElementById('beads-sort-field');
+      const sortDirectionBtn = document.getElementById('beads-sort-direction');
       const statusSelect = document.getElementById('beads-status');
       const typeSelect = document.getElementById('beads-type');
-      const refreshButton = document.getElementById('beads-refresh');
       const listEl = document.getElementById('beads-list');
       const emptyEl = document.getElementById('beads-empty');
       const errorEl = document.getElementById('beads-error');
@@ -138,37 +277,24 @@
         return typeof value === 'string' ? value.toLowerCase() : '';
       }
 
-      function getDescription(issue) {
-        const source = issue.description || issue.text || issue.notes || '';
-        const text = String(source);
-        if (text.length > 140) {
-          return text.slice(0, 137) + '…';
-        }
-        return text;
-      }
+      const selectedValues = (el) => {
+        if (!el) return [];
+        const val = el.value;
+        if (Array.isArray(val)) return val.map(toLower);
+        if (val === undefined || val === null || val === '') return [];
+        return [toLower(val)];
+      };
 
-      function renderList() {
-        const query = toLower(searchInput.value.trim());
-        const statusFilters = statusSelect.value || [];
-        const typeFilters = typeSelect.value || [];
-
-        const filtered = issues.filter((issue) => {
-          const combined = [issue.id, issue.title, issue.description, issue.text, issue.notes]
-            .map(toLower)
-            .some((value) => value.includes(query));
-          const matchesStatus = statusFilters.length === 0 || statusFilters.includes(toLower(issue.status));
-          const matchesType = typeFilters.length === 0 || typeFilters.includes(toLower(issue.type));
-          return (!query || combined) && matchesStatus && matchesType;
-        });
-
+            function renderList() {
+        const rows = Array.isArray(issues) ? issues : [];
         listEl.innerHTML = '';
-        if (!filtered.length) {
+        if (!rows.length) {
           emptyEl.classList.remove('hidden');
           return;
         }
         emptyEl.classList.add('hidden');
 
-        filtered.forEach((issue) => {
+        rows.forEach((issue) => {
           const li = document.createElement('li');
           li.className = 'issue';
           li.tabIndex = 0;
@@ -190,8 +316,7 @@
           listEl.appendChild(li);
         });
       }
-
-      function openIssue(id) {
+function openIssue(id) {
         if (!id) {
           return;
         }
@@ -234,26 +359,66 @@
         }
       });
 
-      // Wait for custom elements to be defined before attaching listeners
       customElements.whenDefined('vscode-multi-select').then(() => {
-        statusSelect.addEventListener('change', () => {
-          console.log('Status changed:', statusSelect.value);
-          renderList();
-        });
-        typeSelect.addEventListener('change', () => {
-          console.log('Type changed:', typeSelect.value);
-          renderList();
-        });
+        statusSelect.addEventListener('change', renderList);
+        typeSelect.addEventListener('change', renderList);
       });
 
-      refreshButton.addEventListener('click', () => {
-        console.log('Refresh clicked');
-        vscode.postMessage({ type: 'refresh' });
+      sortField.addEventListener('change', renderList);
+      sortDirectionBtn.dataset.dir = 'desc';
+      sortDirectionBtn.addEventListener('click', () => {
+        const next = (sortDirectionBtn.dataset.dir || 'desc') === 'desc' ? 'asc' : 'desc';
+        sortDirectionBtn.dataset.dir = next;
+        sortDirectionBtn.textContent = next === 'asc' ? '▲' : '▼';
+        renderList();
       });
-      searchInput.addEventListener('input', renderList);
+
+      const sendFilters = () => {
+        vscode.postMessage({
+          type: 'filtersChanged',
+          payload: {
+            search: searchInput.value.trim(),
+            statuses: statusSelect.value || [],
+            types: typeSelect.value || [],
+            sortField: sortField.value || 'created_at',
+            sortDir: sortDirectionBtn.dataset.dir || 'desc'
+          }
+        });
+      };
+
+      sortField.addEventListener('change', sendFilters);
+      sortDirectionBtn.dataset.dir = 'desc';
+      sortDirectionBtn.addEventListener('click', () => {
+        const next = (sortDirectionBtn.dataset.dir || 'desc') === 'desc' ? 'asc' : 'desc';
+        sortDirectionBtn.dataset.dir = next;
+        sortDirectionBtn.textContent = next === 'asc' ? '▲' : '▼';
+        sendFilters();
+      });
+
+      searchInput.addEventListener('input', sendFilters);
+      searchClear.addEventListener('click', () => {
+        searchInput.value = '';
+        sendFilters();
+      });
+
+      const closeFilters = () => filterPanel.classList.add('hidden');
+      const toggleFilters = () => filterPanel.classList.toggle('hidden');
+      filterToggle.addEventListener('click', toggleFilters);
+      filterClose.addEventListener('click', closeFilters);
+      document.addEventListener('click', (event) => {
+        if (filterPanel.classList.contains('hidden')) return;
+        if (filterPanel.contains(event.target) || filterToggle.contains(event.target)) return;
+        closeFilters();
+      });
+
+      customElements.whenDefined('vscode-multi-select').then(() => {
+        statusSelect.addEventListener('change', sendFilters);
+        typeSelect.addEventListener('change', sendFilters);
+      });
 
       vscode.postMessage({ type: 'ready' });
     })();
   </script>
 </body>
+
 </html>

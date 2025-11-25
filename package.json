@@ -2,7 +2,7 @@
   "name": "beads-ui",
   "displayName": "beads-ui",
   "description": "An unofficial VSCode extension to make it working with beads easier",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": {
     "name": "DEVtheOPS"
   },
@@ -29,6 +29,16 @@
         "command": "beads-ui.refreshIssues",
         "title": "Refresh Beads Issues",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "beads-ui.toggleSort",
+        "title": "Toggle Sort Direction",
+        "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "beads-ui.newIssue",
+        "title": "New Beads Issue",
+        "icon": "$(add)"
       }
     ],
     "viewsContainers": {
@@ -56,6 +66,16 @@
           "command": "beads-ui.refreshIssues",
           "when": "view == beadsIssues.list",
           "group": "navigation"
+        },
+        {
+          "command": "beads-ui.toggleSort",
+          "when": "view == beadsIssues.list",
+          "group": "navigation@1"
+        },
+        {
+          "command": "beads-ui.newIssue",
+          "when": "view == beadsIssues.list",
+          "group": "navigation@2"
         }
       ]
     }
@@ -89,7 +109,8 @@
   },
   "dependencies": {
     "@vscode-elements/elements": "^2.3.1",
+    "@vscode/sqlite3": "^5.0.8",
     "edge.js": "^6.3.0",
-    "sql.js": "^1.13.0"
+    "wa-sqlite": "^1.0.0"
   }
 }
