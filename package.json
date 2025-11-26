@@ -7,7 +7,7 @@
     "name": "DEVtheOPS"
   },
   "license": "MIT",
-  "homepage": "https://github.com/DEVtheOPS/beads-ui-vscode-ext",
+  "homepage": "https://marketplace.visualstudio.com/items?itemName=DEVtheOPS.beads-ui",
   "repository": {
     "type": "git",
     "url": "https://github.com/DEVtheOPS/beads-ui-vscode-ext"
