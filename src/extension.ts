@@ -5,36 +5,87 @@ import { IssueDetailPanelManager } from "./views/issueDetailPanelManager";
 import { TemplateRenderer } from "./utils/templateRenderer";
 
 export function activate(context: vscode.ExtensionContext) {
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  const issueService = new BeadsIssueService(workspaceRoot);
-  const templates = new TemplateRenderer(context.extensionUri);
-  const detailManager = new IssueDetailPanelManager(issueService, templates, context.extensionPath);
-  const viewProvider = new IssuesViewProvider(
-    templates,
-    issueService,
-    async (issueId) => {
-      await detailManager.show(issueId);
-    },
-    context.extensionUri
-  );
+  console.log("[Beads UI] Activation started...");
+  console.log(`[Beads UI] Extension path: ${context.extensionPath}`);
+  console.log(`[Beads UI] Extension URI: ${context.extensionUri.toString()}`);
 
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider("beadsIssues.list", viewProvider),
-    vscode.commands.registerCommand("beads-ui.refreshIssues", () =>
-      viewProvider.refreshIssues()
-    ),
-    vscode.commands.registerCommand("beads-ui.toggleSort", () =>
-      viewProvider.toggleSort()
-    ),
-    vscode.commands.registerCommand("beads-ui.newIssue", () =>
-      viewProvider.createAndOpenIssue()
-    ),
+  try {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    console.log(`[Beads UI] Workspace root: ${workspaceRoot ?? "(no workspace)"}`);
 
-    detailManager,
-    { dispose: () => issueService.dispose() }
-  );
+    const issueService = new BeadsIssueService(workspaceRoot);
+    console.log("[Beads UI] BeadsIssueService created");
 
-  console.log("Beads UI extension activated");
+    const templates = new TemplateRenderer(context.extensionUri);
+    console.log("[Beads UI] TemplateRenderer created");
+
+    const detailManager = new IssueDetailPanelManager(issueService, templates, context.extensionPath);
+    console.log("[Beads UI] IssueDetailPanelManager created");
+
+    const viewProvider = new IssuesViewProvider(
+      templates,
+      issueService,
+      async (issueId) => {
+        await detailManager.show(issueId);
+      },
+      context.extensionUri
+    );
+    console.log("[Beads UI] IssuesViewProvider created");
+
+    // Register webview view provider
+    const viewProviderDisposable = vscode.window.registerWebviewViewProvider(
+      "beadsIssues.list",
+      viewProvider
+    );
+    console.log("[Beads UI] WebviewViewProvider registered for beadsIssues.list");
+
+    // Register commands
+    const refreshCommand = vscode.commands.registerCommand(
+      "beads-ui.refreshIssues",
+      () => {
+        console.log("[Beads UI] Command: beads-ui.refreshIssues executed");
+        return viewProvider.refreshIssues();
+      }
+    );
+    console.log("[Beads UI] Command registered: beads-ui.refreshIssues");
+
+    const toggleSortCommand = vscode.commands.registerCommand(
+      "beads-ui.toggleSort",
+      () => {
+        console.log("[Beads UI] Command: beads-ui.toggleSort executed");
+        return viewProvider.toggleSort();
+      }
+    );
+    console.log("[Beads UI] Command registered: beads-ui.toggleSort");
+
+    const newIssueCommand = vscode.commands.registerCommand(
+      "beads-ui.newIssue",
+      () => {
+        console.log("[Beads UI] Command: beads-ui.newIssue executed");
+        return viewProvider.createAndOpenIssue();
+      }
+    );
+    console.log("[Beads UI] Command registered: beads-ui.newIssue");
+
+    // Add all disposables to subscriptions
+    context.subscriptions.push(
+      viewProviderDisposable,
+      refreshCommand,
+      toggleSortCommand,
+      newIssueCommand,
+      detailManager,
+      { dispose: () => issueService.dispose() }
+    );
+
+    console.log("[Beads UI] Extension activated successfully!");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[Beads UI] Activation FAILED: ${message}`);
+    vscode.window.showErrorMessage(`Beads UI failed to activate: ${message}`);
+    throw error; // Re-throw to mark activation as failed
+  }
 }
 
-export function deactivate() {}
+export function deactivate() {
+  console.log("[Beads UI] Extension deactivated");
+}

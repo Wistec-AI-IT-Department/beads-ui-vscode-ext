@@ -23,7 +23,11 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onView:beadsIssues.list",
+    "onCommand:beads-ui.refreshIssues",
+    "onCommand:beads-ui.toggleSort",
+    "onCommand:beads-ui.newIssue"
   ],
   "main": "./dist/extension.js",
   "contributes": {
