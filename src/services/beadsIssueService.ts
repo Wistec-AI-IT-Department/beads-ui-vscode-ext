@@ -1,8 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
-// Use the ASM.js version (pure JS, no WASM file needed)
-import initSqlJs, { Database as SqlJsDatabase, SqlJsStatic } from "sql.js/dist/sql-asm.js";
+import type { Database as SqlJsDatabase, SqlJsStatic } from "sql.js";
 import { BdIssue } from "../types";
+
+// We'll load sql.js dynamically to avoid webpack bundling issues
+let sqlJsModule: SqlJsStatic | undefined;
 
 type SortField = "created_at" | "updated_at" | "closed_at" | "title" | "id";
 type SortDir = "asc" | "desc";
@@ -345,6 +347,9 @@ export class BeadsIssueService {
 
   private async getSqlJs(): Promise<SqlJsStatic> {
     if (!this.sqlJsPromise) {
+      // Use dynamic require to avoid webpack bundling issues with sql.js
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const initSqlJs = require("sql.js") as (config?: object) => Promise<SqlJsStatic>;
       this.sqlJsPromise = initSqlJs();
     }
     return this.sqlJsPromise;

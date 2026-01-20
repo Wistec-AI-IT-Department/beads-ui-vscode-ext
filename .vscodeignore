@@ -11,8 +11,9 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
-# Exclude most node_modules - sql.js is bundled by webpack
+# Exclude node_modules but keep sql.js (external dependency)
 node_modules/**
+!node_modules/sql.js/**
 # Also exclude dev and test directories
 test_workspace/**
 beads_0.47.1_windows_amd64/**

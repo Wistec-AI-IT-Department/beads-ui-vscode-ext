@@ -24,7 +24,8 @@ const extensionConfig = {
     externalsType: 'commonjs',
     externals: [
         {
-            vscode: 'commonjs vscode'
+            vscode: 'commonjs vscode',
+            'sql.js': 'commonjs sql.js'
         }
     ],
     ignoreWarnings: [
