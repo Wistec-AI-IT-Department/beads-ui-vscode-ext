@@ -1,0 +1,1 @@
+**Note**: This project uses [bd (beads)](https://github.com/steveyegge/beads) for issue tracking. Use `bd` commands instead of markdown TODOs. All workflow guidance now lives in `AGENTS.md`, so please follow that file directly and treat `CLAUDE.md` as a pointer only.
