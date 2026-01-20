@@ -210,6 +210,103 @@ export class BeadsIssueService {
     return created;
   }
 
+  async getRelatedIssues(issueId: string): Promise<Issue[]> {
+    if (!this.db) {
+        return [];
+    }
+
+    try {
+        const relatedIssues: Issue[] = [];
+        
+        // Method 1: Check if there's a separate dependencies table
+        const tablesResult = this.db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='dependencies'");
+        
+        if (tablesResult.length > 0 && tablesResult[0].values.length > 0) {
+            // Query from dependencies table - issues that this issue depends on
+            const depsQuery = `
+                SELECT i.* FROM issues i
+                INNER JOIN dependencies d ON i.id = d.dependency_id
+                WHERE d.issue_id = ?
+            `;
+            const depsResult = this.db.exec(depsQuery, [issueId]);
+            if (depsResult.length > 0) {
+                relatedIssues.push(...this.mapResultToIssues(depsResult[0]));
+            }
+            
+            // Query from dependencies table - issues that depend on this issue
+            const reverseDepsQuery = `
+                SELECT i.* FROM issues i
+                INNER JOIN dependencies d ON i.id = d.issue_id
+                WHERE d.dependency_id = ?
+            `;
+            const reverseDepsResult = this.db.exec(reverseDepsQuery, [issueId]);
+            if (reverseDepsResult.length > 0) {
+                relatedIssues.push(...this.mapResultToIssues(reverseDepsResult[0]));
+            }
+        }
+        
+        // Method 2: Check dependencies JSON field in issues table
+        const issueResult = this.db.exec(`SELECT dependencies FROM issues WHERE id = ?`, [issueId]);
+        if (issueResult.length > 0 && issueResult[0].values.length > 0) {
+            const depsJson = issueResult[0].values[0][0] as string;
+            if (depsJson) {
+                try {
+                    const deps = JSON.parse(depsJson);
+                    // deps could be an array of strings or objects with type/id
+                    const depIds: string[] = [];
+                    
+                    if (Array.isArray(deps)) {
+                        for (const dep of deps) {
+                            if (typeof dep === 'string') {
+                                depIds.push(dep);
+                            } else if (dep && typeof dep === 'object') {
+                                // Handle {type: "blocks", id: "xxx"} format
+                                if (dep.id) depIds.push(dep.id);
+                                if (dep.target) depIds.push(dep.target);
+                            }
+                        }
+                    }
+                    
+                    if (depIds.length > 0) {
+                        const placeholders = depIds.map(() => '?').join(',');
+                        const relatedResult = this.db.exec(
+                            `SELECT * FROM issues WHERE id IN (${placeholders})`,
+                            depIds
+                        );
+                        if (relatedResult.length > 0) {
+                            relatedIssues.push(...this.mapResultToIssues(relatedResult[0]));
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to parse dependencies JSON:', e);
+                }
+            }
+        }
+        
+        // Method 3: Find issues that reference this issue in their dependencies
+        const reverseQuery = `
+            SELECT * FROM issues 
+            WHERE dependencies LIKE ? 
+            AND id != ?
+        `;
+        const reverseResult = this.db.exec(reverseQuery, [`%${issueId}%`, issueId]);
+        if (reverseResult.length > 0) {
+            const reverseIssues = this.mapResultToIssues(reverseResult[0]);
+            // Add only if not already in the list
+            for (const issue of reverseIssues) {
+                if (!relatedIssues.find(r => r.id === issue.id)) {
+                    relatedIssues.push(issue);
+                }
+            }
+        }
+        
+        return relatedIssues;
+    } catch (error) {
+        console.error('Error getting related issues:', error);
+        return [];
+    }
+  }
+
   dispose(): void {
     if (this.db) {
       this.db.close();
