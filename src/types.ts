@@ -1,6 +1,6 @@
 export interface BdIssue {
   [key: string]: unknown;
-  id?: string;
+  id: string; // Required - every issue must have an id
   title?: string;
   status?: string;
   priority?: number;

@@ -89,7 +89,8 @@ export class BeadsIssueService {
     const issue = this.parseRow(row);
 
     // Fetch subtasks for epics using hierarchical ID pattern (e.g., epic-id.1, epic-id.2)
-    if (issue.issue_type === 'epic' || issue.type === 'epic') {
+    const issueType = issue.issue_type ?? issue.type;
+    if (issueType === 'epic') {
       const subtaskRows = await this.all<Record<string, unknown>>(
         db,
         `SELECT * FROM issues WHERE id LIKE ? AND id != ? ORDER BY id ASC`,
@@ -97,7 +98,7 @@ export class BeadsIssueService {
       );
 
       if (subtaskRows.length > 0) {
-        issue.subtasks = subtaskRows.map(row => this.parseRow(row));
+        issue.subtasks = subtaskRows.map((subtaskRow) => this.parseRow(subtaskRow));
       }
     }
 
@@ -112,7 +113,7 @@ export class BeadsIssueService {
         "status" | "priority" | "assignee" | "description" | "title"
       >
     >
-  ) {
+  ): Promise<void> {
     if (!issueId) {
       throw new Error("No issue id provided for update.");
     }
@@ -210,100 +211,123 @@ export class BeadsIssueService {
     return created;
   }
 
-  async getRelatedIssues(issueId: string): Promise<Issue[]> {
-    if (!this.db) {
-        return [];
+  async getRelatedIssues(issueId: string): Promise<BdIssue[]> {
+    if (!issueId) {
+      return [];
     }
 
     try {
-        const relatedIssues: Issue[] = [];
-        
-        // Method 1: Check if there's a separate dependencies table
-        const tablesResult = this.db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='dependencies'");
-        
-        if (tablesResult.length > 0 && tablesResult[0].values.length > 0) {
-            // Query from dependencies table - issues that this issue depends on
-            const depsQuery = `
-                SELECT i.* FROM issues i
-                INNER JOIN dependencies d ON i.id = d.dependency_id
-                WHERE d.issue_id = ?
-            `;
-            const depsResult = this.db.exec(depsQuery, [issueId]);
-            if (depsResult.length > 0) {
-                relatedIssues.push(...this.mapResultToIssues(depsResult[0]));
-            }
-            
-            // Query from dependencies table - issues that depend on this issue
-            const reverseDepsQuery = `
-                SELECT i.* FROM issues i
-                INNER JOIN dependencies d ON i.id = d.issue_id
-                WHERE d.dependency_id = ?
-            `;
-            const reverseDepsResult = this.db.exec(reverseDepsQuery, [issueId]);
-            if (reverseDepsResult.length > 0) {
-                relatedIssues.push(...this.mapResultToIssues(reverseDepsResult[0]));
-            }
+      const db = await this.getDatabase();
+      const relatedIssues: BdIssue[] = [];
+      const addedIds = new Set<string>();
+
+      // Check if dependencies table exists
+      const tables = await this.all<{ name: string }>(
+        db,
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='dependencies'"
+      );
+
+      if (tables.length > 0) {
+        // Query issues that this issue depends on
+        const depsRows = await this.all<Record<string, unknown>>(
+          db,
+          `SELECT i.* FROM issues i
+           INNER JOIN dependencies d ON i.id = d.dependency_id
+           WHERE d.issue_id = ?`,
+          [issueId]
+        );
+        for (const row of depsRows) {
+          const issue = this.parseRow(row);
+          if (!addedIds.has(issue.id)) {
+            addedIds.add(issue.id);
+            relatedIssues.push(issue);
+          }
         }
-        
-        // Method 2: Check dependencies JSON field in issues table
-        const issueResult = this.db.exec(`SELECT dependencies FROM issues WHERE id = ?`, [issueId]);
-        if (issueResult.length > 0 && issueResult[0].values.length > 0) {
-            const depsJson = issueResult[0].values[0][0] as string;
-            if (depsJson) {
-                try {
-                    const deps = JSON.parse(depsJson);
-                    // deps could be an array of strings or objects with type/id
-                    const depIds: string[] = [];
-                    
-                    if (Array.isArray(deps)) {
-                        for (const dep of deps) {
-                            if (typeof dep === 'string') {
-                                depIds.push(dep);
-                            } else if (dep && typeof dep === 'object') {
-                                // Handle {type: "blocks", id: "xxx"} format
-                                if (dep.id) depIds.push(dep.id);
-                                if (dep.target) depIds.push(dep.target);
-                            }
-                        }
-                    }
-                    
-                    if (depIds.length > 0) {
-                        const placeholders = depIds.map(() => '?').join(',');
-                        const relatedResult = this.db.exec(
-                            `SELECT * FROM issues WHERE id IN (${placeholders})`,
-                            depIds
-                        );
-                        if (relatedResult.length > 0) {
-                            relatedIssues.push(...this.mapResultToIssues(relatedResult[0]));
-                        }
-                    }
-                } catch (e) {
-                    console.error('Failed to parse dependencies JSON:', e);
+
+        // Query issues that depend on this issue
+        const reverseDepsRows = await this.all<Record<string, unknown>>(
+          db,
+          `SELECT i.* FROM issues i
+           INNER JOIN dependencies d ON i.id = d.issue_id
+           WHERE d.dependency_id = ?`,
+          [issueId]
+        );
+        for (const row of reverseDepsRows) {
+          const issue = this.parseRow(row);
+          if (!addedIds.has(issue.id)) {
+            addedIds.add(issue.id);
+            relatedIssues.push(issue);
+          }
+        }
+      }
+
+      // Check dependencies JSON field in issues table
+      const issueRow = await this.getRow<Record<string, unknown>>(
+        db,
+        `SELECT dependencies FROM issues WHERE id = ?`,
+        [issueId]
+      );
+
+      if (issueRow && issueRow.dependencies) {
+        const depsJson = issueRow.dependencies as string;
+        try {
+          const deps: unknown = JSON.parse(depsJson);
+          const depIds: string[] = [];
+
+          if (Array.isArray(deps)) {
+            for (const dep of deps) {
+              if (typeof dep === 'string') {
+                depIds.push(dep);
+              } else if (dep !== null && typeof dep === 'object') {
+                const depObj = dep as Record<string, unknown>;
+                if (typeof depObj.id === 'string') {
+                  depIds.push(depObj.id);
                 }
-            }
-        }
-        
-        // Method 3: Find issues that reference this issue in their dependencies
-        const reverseQuery = `
-            SELECT * FROM issues 
-            WHERE dependencies LIKE ? 
-            AND id != ?
-        `;
-        const reverseResult = this.db.exec(reverseQuery, [`%${issueId}%`, issueId]);
-        if (reverseResult.length > 0) {
-            const reverseIssues = this.mapResultToIssues(reverseResult[0]);
-            // Add only if not already in the list
-            for (const issue of reverseIssues) {
-                if (!relatedIssues.find(r => r.id === issue.id)) {
-                    relatedIssues.push(issue);
+                if (typeof depObj.target === 'string') {
+                  depIds.push(depObj.target);
                 }
+              }
             }
+          }
+
+          if (depIds.length > 0) {
+            const placeholders = depIds.map(() => '?').join(',');
+            const relatedRows = await this.all<Record<string, unknown>>(
+              db,
+              `SELECT * FROM issues WHERE id IN (${placeholders})`,
+              depIds
+            );
+            for (const relatedRow of relatedRows) {
+              const issue = this.parseRow(relatedRow);
+              if (!addedIds.has(issue.id)) {
+                addedIds.add(issue.id);
+                relatedIssues.push(issue);
+              }
+            }
+          }
+        } catch {
+          // Ignore JSON parse errors
         }
-        
-        return relatedIssues;
-    } catch (error) {
-        console.error('Error getting related issues:', error);
-        return [];
+      }
+
+      // Find issues that reference this issue in their dependencies
+      const reverseRows = await this.all<Record<string, unknown>>(
+        db,
+        `SELECT * FROM issues WHERE dependencies LIKE ? AND id != ?`,
+        [`%${issueId}%`, issueId]
+      );
+      for (const reverseRow of reverseRows) {
+        const issue = this.parseRow(reverseRow);
+        if (!addedIds.has(issue.id)) {
+          addedIds.add(issue.id);
+          relatedIssues.push(issue);
+        }
+      }
+
+      return relatedIssues;
+    } catch {
+      console.error('Error getting related issues');
+      return [];
     }
   }
 
@@ -389,24 +413,34 @@ export class BeadsIssueService {
   }
 
   private parseRow(row: Record<string, unknown>): BdIssue {
-    const issue: BdIssue = { ...row } as BdIssue;
+    // Ensure id is a valid string - throw if missing since id is required
+    if (row.id === undefined || row.id === null) {
+      throw new Error('Issue row is missing required id field');
+    }
+    const id = typeof row.id === 'string' ? row.id : String(row.id);
+    
+    const issue: BdIssue = { 
+      ...row,
+      id 
+    } as BdIssue;
+    
     if (typeof row.dependencies === "string" && row.dependencies) {
       try {
-        issue.dependencies = JSON.parse(row.dependencies as string);
+        issue.dependencies = JSON.parse(row.dependencies);
       } catch {
         /* ignore */
       }
     }
     if (typeof row.dependents === "string" && row.dependents) {
       try {
-        issue.dependents = JSON.parse(row.dependents as string);
+        issue.dependents = JSON.parse(row.dependents);
       } catch {
         /* ignore */
       }
     }
     if (typeof row.related === "string" && row.related) {
       try {
-        issue.related = JSON.parse(row.related as string);
+        issue.related = JSON.parse(row.related);
       } catch {
         /* ignore */
       }
@@ -425,7 +459,7 @@ export class BeadsIssueService {
     const max = rows
       .map((r) => r.id)
       .map((v) => v.match(/bd-(\d+)/i)?.[1])
-      .filter(Boolean)
+      .filter((n): n is string => n !== undefined)
       .map((n) => Number(n))
       .reduce((a, b) => Math.max(a, b), 0);
     return `bd-${max + 1}`;
@@ -443,7 +477,7 @@ export class BeadsIssueService {
     const max = rows
       .map((r) => r.id)
       .map((id) => Number(id.split(".").pop()))
-      .filter((n) => Number.isFinite(n))
+      .filter((n): n is number => Number.isFinite(n))
       .reduce((a, b) => Math.max(a, b), 0);
     return `${epicId}.${max + 1}`;
   }
