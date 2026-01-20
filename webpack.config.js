@@ -24,10 +24,8 @@ const extensionConfig = {
     externalsType: 'commonjs',
     externals: [
         {
-            vscode: 'commonjs vscode',
-            '@vscode/sqlite3': 'commonjs @vscode/sqlite3'
-        },
-        /^@vscode\/sqlite3(\/.*)?$/
+            vscode: 'commonjs vscode'
+        }
     ],
     ignoreWarnings: [
         /Critical dependency: the request of a dependency is an expression/

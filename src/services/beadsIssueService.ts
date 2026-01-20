@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
-import sqlite3, { Database } from "@vscode/sqlite3";
+// Use the ASM.js version (pure JS, no WASM file needed)
+import initSqlJs, { Database as SqlJsDatabase, SqlJsStatic } from "sql.js/dist/sql-asm.js";
 import { BdIssue } from "../types";
 
 type SortField = "created_at" | "updated_at" | "closed_at" | "title" | "id";
@@ -15,8 +16,9 @@ type SearchFilters = {
 };
 
 export class BeadsIssueService {
-  private db?: Database;
+  private db?: SqlJsDatabase;
   private dbPath?: string;
+  private sqlJsPromise?: Promise<SqlJsStatic>;
   private filters: SearchFilters = {
     search: "",
     statuses: ["open", "in_progress", "blocked", "closed"],
@@ -40,7 +42,7 @@ export class BeadsIssueService {
     const { search, statuses, types, sortField, sortDir } = this.filters;
 
     const clauses: string[] = [];
-    const params: unknown[] = [];
+    const params: (string | number | null)[] = [];
 
     if (search) {
       clauses.push(`(
@@ -67,7 +69,7 @@ export class BeadsIssueService {
     const orderSql = `ORDER BY ${sortField} ${sortDir.toUpperCase()}`;
     const sql = `SELECT * FROM issues ${whereSql} ${orderSql}`;
 
-    const rows = await this.all<Record<string, unknown>>(db, sql, params);
+    const rows = this.all<Record<string, unknown>>(db, sql, params);
     return rows.map((row) => this.parseRow(row));
   }
 
@@ -76,7 +78,7 @@ export class BeadsIssueService {
       return null;
     }
     const db = await this.getDatabase();
-    const row = await this.getRow<Record<string, unknown>>(
+    const row = this.getRow<Record<string, unknown>>(
       db,
       `SELECT * FROM issues WHERE id = ?`,
       [issueId]
@@ -91,7 +93,7 @@ export class BeadsIssueService {
     // Fetch subtasks for epics using hierarchical ID pattern (e.g., epic-id.1, epic-id.2)
     const issueType = issue.issue_type ?? issue.type;
     if (issueType === 'epic') {
-      const subtaskRows = await this.all<Record<string, unknown>>(
+      const subtaskRows = this.all<Record<string, unknown>>(
         db,
         `SELECT * FROM issues WHERE id LIKE ? AND id != ? ORDER BY id ASC`,
         [issueId + '.%', issueId]
@@ -159,12 +161,13 @@ export class BeadsIssueService {
 
     fields.push("updated_at = CURRENT_TIMESTAMP");
     const sql = `UPDATE issues SET ${fields.join(", ")} WHERE id = ?`;
-    await this.run(db, sql, [...values, issueId]);
+    this.run(db, sql, [...values, issueId]);
+    this.saveDatabase();
   }
 
   async createIssue(initial: Partial<BdIssue> = {}): Promise<BdIssue> {
     const db = await this.getDatabase();
-    const id = await this.nextIssueId(db);
+    const id = this.nextIssueId(db);
     const now = new Date().toISOString();
     const title = String(initial.title ?? "New issue");
     const description = String(initial.description ?? "");
@@ -174,12 +177,13 @@ export class BeadsIssueService {
     const issueType = String(initial.issue_type ?? initial.type ?? "task");
     const assignee = initial.assignee ? String(initial.assignee) : null;
 
-    await this.run(
+    this.run(
       db,
       `INSERT INTO issues (id, title, description, status, priority, issue_type, assignee, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, title, description, status, priority, issueType, assignee, now, now]
     );
+    this.saveDatabase();
 
     const created = await this.fetchIssue(id);
     if (!created) {
@@ -193,16 +197,17 @@ export class BeadsIssueService {
       throw new Error("Parent epic id is required to create a sub-issue.");
     }
     const db = await this.getDatabase();
-    const nextId = await this.nextSubIssueId(db, epicId);
+    const nextId = this.nextSubIssueId(db, epicId);
     const now = new Date().toISOString();
     const title = `Subtask for ${epicId}`;
 
-    await this.run(
+    this.run(
       db,
       `INSERT INTO issues (id, title, description, status, priority, issue_type, assignee, created_at, updated_at)
        VALUES (?, ?, '', 'open', 2, 'task', NULL, ?, ?)`,
       [nextId, title, now, now]
     );
+    this.saveDatabase();
 
     const created = await this.fetchIssue(nextId);
     if (!created) {
@@ -222,14 +227,14 @@ export class BeadsIssueService {
       const addedIds = new Set<string>();
 
       // Check if dependencies table exists
-      const tables = await this.all<{ name: string }>(
+      const tables = this.all<{ name: string }>(
         db,
         "SELECT name FROM sqlite_master WHERE type='table' AND name='dependencies'"
       );
 
       if (tables.length > 0) {
         // Query issues that this issue depends on
-        const depsRows = await this.all<Record<string, unknown>>(
+        const depsRows = this.all<Record<string, unknown>>(
           db,
           `SELECT i.* FROM issues i
            INNER JOIN dependencies d ON i.id = d.dependency_id
@@ -245,7 +250,7 @@ export class BeadsIssueService {
         }
 
         // Query issues that depend on this issue
-        const reverseDepsRows = await this.all<Record<string, unknown>>(
+        const reverseDepsRows = this.all<Record<string, unknown>>(
           db,
           `SELECT i.* FROM issues i
            INNER JOIN dependencies d ON i.id = d.issue_id
@@ -262,7 +267,7 @@ export class BeadsIssueService {
       }
 
       // Check dependencies JSON field in issues table
-      const issueRow = await this.getRow<Record<string, unknown>>(
+      const issueRow = this.getRow<Record<string, unknown>>(
         db,
         `SELECT dependencies FROM issues WHERE id = ?`,
         [issueId]
@@ -292,7 +297,7 @@ export class BeadsIssueService {
 
           if (depIds.length > 0) {
             const placeholders = depIds.map(() => '?').join(',');
-            const relatedRows = await this.all<Record<string, unknown>>(
+            const relatedRows = this.all<Record<string, unknown>>(
               db,
               `SELECT * FROM issues WHERE id IN (${placeholders})`,
               depIds
@@ -311,7 +316,7 @@ export class BeadsIssueService {
       }
 
       // Find issues that reference this issue in their dependencies
-      const reverseRows = await this.all<Record<string, unknown>>(
+      const reverseRows = this.all<Record<string, unknown>>(
         db,
         `SELECT * FROM issues WHERE dependencies LIKE ? AND id != ?`,
         [`%${issueId}%`, issueId]
@@ -338,7 +343,14 @@ export class BeadsIssueService {
     }
   }
 
-  private async getDatabase(): Promise<Database> {
+  private async getSqlJs(): Promise<SqlJsStatic> {
+    if (!this.sqlJsPromise) {
+      this.sqlJsPromise = initSqlJs();
+    }
+    return this.sqlJsPromise;
+  }
+
+  private async getDatabase(): Promise<SqlJsDatabase> {
     if (!this.workspaceRoot) {
       throw new Error(
         "Open a workspace folder that contains a .beads database to load issues."
@@ -356,60 +368,38 @@ export class BeadsIssueService {
       );
     }
 
-    this.db = await this.openNativeDatabase(this.dbPath);
+    const SQL = await this.getSqlJs();
+    const fileBuffer = fs.readFileSync(this.dbPath);
+    this.db = new SQL.Database(fileBuffer);
     return this.db;
   }
 
-  private openNativeDatabase(dbPath: string): Promise<Database> {
-    return new Promise((resolve, reject) => {
-      const db = new sqlite3.Database(
-        dbPath,
-        sqlite3.OPEN_READWRITE,
-        (err: Error | null) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(db);
-          }
-        }
-      );
-    });
+  private saveDatabase(): void {
+    if (this.db && this.dbPath) {
+      const data = this.db.export();
+      const buffer = Buffer.from(data);
+      fs.writeFileSync(this.dbPath, buffer);
+    }
   }
 
-  private all<T>(db: Database, sql: string, params: unknown[] = []): Promise<T[]> {
-    return new Promise((resolve, reject) => {
-      db.all(sql, params, (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve((rows as T[]) ?? []);
-        }
-      });
-    });
+  private all<T>(db: SqlJsDatabase, sql: string, params: (string | number | null)[] = []): T[] {
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    const results: T[] = [];
+    while (stmt.step()) {
+      results.push(stmt.getAsObject() as T);
+    }
+    stmt.free();
+    return results;
   }
 
-  private getRow<T>(db: Database, sql: string, params: unknown[] = []): Promise<T | undefined> {
-    return new Promise((resolve, reject) => {
-      db.get(sql, params, (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row as T | undefined);
-        }
-      });
-    });
+  private getRow<T>(db: SqlJsDatabase, sql: string, params: (string | number | null)[] = []): T | undefined {
+    const results = this.all<T>(db, sql, params);
+    return results[0];
   }
 
-  private run(db: Database, sql: string, params: unknown[] = []): Promise<void> {
-    return new Promise((resolve, reject) => {
-      db.run(sql, params, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-    });
+  private run(db: SqlJsDatabase, sql: string, params: (string | number | null)[] = []): void {
+    db.run(sql, params);
   }
 
   private parseRow(row: Record<string, unknown>): BdIssue {
@@ -451,8 +441,8 @@ export class BeadsIssueService {
     return issue;
   }
 
-  private async nextIssueId(db: Database): Promise<string> {
-    const rows = await this.all<{ id: string }>(db, "SELECT id FROM issues");
+  private nextIssueId(db: SqlJsDatabase): string {
+    const rows = this.all<{ id: string }>(db, "SELECT id FROM issues");
     if (!rows.length) {
       return "bd-1";
     }
@@ -465,8 +455,8 @@ export class BeadsIssueService {
     return `bd-${max + 1}`;
   }
 
-  private async nextSubIssueId(db: Database, epicId: string): Promise<string> {
-    const rows = await this.all<{ id: string }>(
+  private nextSubIssueId(db: SqlJsDatabase, epicId: string): string {
+    const rows = this.all<{ id: string }>(
       db,
       "SELECT id FROM issues WHERE id LIKE ?",
       [`${epicId}.%`]

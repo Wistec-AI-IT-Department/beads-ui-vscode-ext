@@ -118,6 +118,7 @@
     "@vscode-elements/elements": "^2.3.1",
     "@vscode/sqlite3": "^5.0.8",
     "edge.js": "^6.3.0",
+    "sql.js": "^1.13.0",
     "wa-sqlite": "^1.0.0"
   }
 }

@@ -1,7 +1,6 @@
 .vscode/**
 .vscode-test/**
 out/**
-node_modules/**
 src/**
 .gitignore
 .yarnrc
@@ -12,3 +11,10 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+# Exclude most node_modules - sql.js is bundled by webpack
+node_modules/**
+# Also exclude dev and test directories
+test_workspace/**
+beads_0.47.1_windows_amd64/**
+beads_backup_root/**
+history/**
