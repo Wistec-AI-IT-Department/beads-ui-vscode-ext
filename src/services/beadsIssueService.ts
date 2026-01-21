@@ -366,29 +366,76 @@ export class BeadsIssueService {
       return this.db;
     }
 
-    this.dbPath = path.join(this.workspaceRoot, ".beads", "beads.db");
-    if (!fs.existsSync(this.dbPath)) {
-      throw new Error(
-        `No beads database found at ${this.dbPath}. Run 'bd init' in your workspace to initialize beads.`
-      );
+    // Dynamic path resolution: Search upward for .beads folder
+    let currentPath = this.workspaceRoot;
+    let foundDbPath: string | undefined;
+    const pathsSearched: string[] = [];
+    
+    // 1. Upward Search
+    for (let i = 0; i < 10; i++) {
+        const checkPath = path.join(currentPath, ".beads", "beads.db");
+        pathsSearched.push(checkPath);
+        if (fs.existsSync(checkPath)) {
+            foundDbPath = checkPath;
+            break;
+        }
+        const parent = path.dirname(currentPath);
+        if (parent === currentPath) break; // Reached root
+        currentPath = parent;
     }
+
+    // 2. Downward Search (if not found upward) - usually helpful if workspace root is a parent of the repo
+    if (!foundDbPath) {
+        try {
+            const subdirs = fs.readdirSync(this.workspaceRoot, { withFileTypes: true });
+            for (const dirent of subdirs) {
+                if (dirent.isDirectory() && dirent.name !== 'node_modules' && !dirent.name.startsWith('.')) {
+                    const checkPath = path.join(this.workspaceRoot, dirent.name, ".beads", "beads.db");
+                    pathsSearched.push(checkPath);
+                    if (fs.existsSync(checkPath)) {
+                        foundDbPath = checkPath;
+                        break;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("[BeadsDB] Error searching subdirectories", e);
+        }
+    }
+
+    // Fallback or final resolution
+    this.dbPath = foundDbPath || path.join(this.workspaceRoot, ".beads", "beads.db");
+
+    if (!foundDbPath) {
+      console.error(`[BeadsDB] Database not found. Paths searched:\n${pathsSearched.join('\n')}`);
+      // Throw a more informative error that the dashboard can catch
+      const error = new Error(`No beads database found. Searched ${pathsSearched.length} locations including ${this.dbPath}.`);
+      (error as any).pathsSearched = pathsSearched;
+      throw error;
+    }
+
+    console.log(`[BeadsDB] Loading database from: ${this.dbPath}`);
 
     const SQL = await this.getSqlJs();
     const fileBuffer = fs.readFileSync(this.dbPath);
     this.db = new SQL.Database(fileBuffer);
     
     // Initialize Telemetry Table if not exists (for the UI's internal use/consistency)
-    this.run(this.db, `
-      CREATE TABLE IF NOT EXISTS wistec_telemetry (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        agent_id TEXT,
-        bead_id TEXT,
-        node_type TEXT,
-        logic_branch TEXT,
-        token_burn INTEGER
-      )
-    `);
+    try {
+      this.run(this.db, `
+        CREATE TABLE IF NOT EXISTS wistec_telemetry (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp TEXT,
+          agent_id TEXT,
+          bead_id TEXT,
+          node_type TEXT,
+          logic_branch TEXT,
+          token_burn INTEGER
+        )
+      `);
+    } catch (e) {
+      console.error(`[BeadsDB] Error initializing telemetry table:`, e);
+    }
 
     return this.db;
   }

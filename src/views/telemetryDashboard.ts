@@ -75,8 +75,13 @@ export class TelemetryDashboardPanel {
         logs: logs,
         stats: stats
       });
-    } catch (e) {
+    } catch (e: any) { // Type as any to access custom properties
       console.error(e);
+      this._panel.webview.postMessage({
+        command: 'error',
+        message: e.message || String(e),
+        pathsSearched: e.pathsSearched || []
+      });
     }
   }
 
@@ -99,6 +104,12 @@ export class TelemetryDashboardPanel {
         #canvas-container { position: relative; height: 50vh; border: 1px solid #222; background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%); border-radius: 8px; overflow: hidden; margin-bottom: 20px;}
         canvas { display: block; width: 100%; height: 100%; }
 
+        /* Error Screen */
+        #error-screen { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background: #000; z-index: 1000; padding: 40px; box-sizing: border-box; }
+        .error-title { color: #ff0055; font-size: 2em; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid #ff0055; padding-bottom: 10px; }
+        .error-msg { color: #fff; font-size: 1.2em; margin-bottom: 20px; }
+        .path-list { color: #888; font-family: monospace; background: #111; padding: 10px; border: 1px solid #333; max-height: 300px; overflow-y: auto;}
+    
         .log-panel-title { font-weight: bold; margin-bottom: 5px; color: #888; text-transform: uppercase; font-size: 0.8em; }
         .log-panel { height: 30vh; overflow-y: auto; font-size: 0.9em; border: 1px solid #222; background: #111; padding: 5px; }
         .log-entry { padding: 4px 10px; border-bottom: 1px solid #222; display: grid; grid-template-columns: 100px 100px 100px 1fr 80px; gap: 10px; align-items: center; }
@@ -116,6 +127,13 @@ export class TelemetryDashboardPanel {
     </style>
 </head>
 <body>
+    <div id="error-screen">
+        <div class="error-title">Wistec Diagnostic Screen</div>
+        <div class="error-msg" id="error-message">Database not found</div>
+        <div>Paths Searched:</div>
+        <div class="path-list" id="path-list"></div>
+    </div>
+
     <div class="header">
         <div class="title">Wistec Echo Telemetry</div>
         <div class="stats">
@@ -158,10 +176,20 @@ export class TelemetryDashboardPanel {
             const message = event.data;
             if (message.command === 'updatedata') {
                 updateDashboard(message.logs, message.stats);
+            } else if (message.command === 'error') {
+                showError(message.message, message.pathsSearched);
             }
         });
 
+        function showError(msg, paths) {
+            document.getElementById('error-screen').style.display = 'block';
+            document.getElementById('error-message').innerText = msg;
+            const pathList = document.getElementById('path-list');
+            pathList.innerHTML = paths.map(p => \`<div>\${p}</div>\`).join('');
+        }
+
         function updateDashboard(newLogs, stats) {
+            document.getElementById('error-screen').style.display = 'none'; // Hide error if success
             logs = newLogs;
             document.getElementById('stat-agents').innerText = stats.activeAgents;
             document.getElementById('stat-load').innerText = stats.mem + '%';
@@ -210,6 +238,7 @@ export class TelemetryDashboardPanel {
                nodes[agentId].bead = latestLog.bead_id;
             });
         }
+
 
         function draw() {
             ctx.fillStyle = 'rgba(13, 13, 13, 0.2)'; // Clear with trail
