@@ -46,6 +46,11 @@
         "command": "beads-ui.newIssue",
         "title": "New Beads Issue",
         "icon": "$(add)"
+      },
+      {
+        "command": "beads-ui.openTelemetry",
+        "title": "Open Echo Telemetry Dashboard",
+        "category": "Beads"
       }
     ],
     "viewsContainers": {

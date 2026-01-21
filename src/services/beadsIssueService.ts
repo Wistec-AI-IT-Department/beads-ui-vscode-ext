@@ -355,14 +355,14 @@ export class BeadsIssueService {
     return this.sqlJsPromise;
   }
 
-  private async getDatabase(): Promise<SqlJsDatabase> {
+  private async getDatabase(forceRefresh = false): Promise<SqlJsDatabase> {
     if (!this.workspaceRoot) {
       throw new Error(
         "Open a workspace folder that contains a .beads database to load issues."
       );
     }
 
-    if (this.db) {
+    if (this.db && !forceRefresh) {
       return this.db;
     }
 
@@ -376,7 +376,28 @@ export class BeadsIssueService {
     const SQL = await this.getSqlJs();
     const fileBuffer = fs.readFileSync(this.dbPath);
     this.db = new SQL.Database(fileBuffer);
+    
+    // Initialize Telemetry Table if not exists (for the UI's internal use/consistency)
+    this.run(this.db, `
+      CREATE TABLE IF NOT EXISTS wistec_telemetry (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT,
+        agent_id TEXT,
+        bead_id TEXT,
+        node_type TEXT,
+        logic_branch TEXT,
+        token_burn INTEGER
+      )
+    `);
+
     return this.db;
+  }
+
+  async getTelemetryLogs(limit = 100): Promise<any[]> {
+    // Force refresh to get latest logs from external processes (like stress test)
+    const db = await this.getDatabase(true); 
+    const sql = `SELECT * FROM wistec_telemetry ORDER BY id DESC LIMIT ?`;
+    return this.all(db, sql, [limit]);
   }
 
   private saveDatabase(): void {

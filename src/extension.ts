@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { BeadsIssueService } from "./services/beadsIssueService";
 import { IssuesViewProvider } from "./views/issuesViewProvider";
 import { IssueDetailPanelManager } from "./views/issueDetailPanelManager";
+import { TelemetryDashboardPanel } from "./views/telemetryDashboard";
 import { TemplateRenderer } from "./utils/templateRenderer";
 
 export function activate(context: vscode.ExtensionContext) {
@@ -67,12 +68,21 @@ export function activate(context: vscode.ExtensionContext) {
     );
     console.log("[Beads UI] Command registered: beads-ui.newIssue");
 
+    const openTelemetryCommand = vscode.commands.registerCommand(
+      "beads-ui.openTelemetry",
+      () => {
+        TelemetryDashboardPanel.createOrShow(issueService);
+      }
+    );
+    console.log("[Beads UI] Command registered: beads-ui.openTelemetry");
+
     // Add all disposables to subscriptions
     context.subscriptions.push(
       viewProviderDisposable,
       refreshCommand,
       toggleSortCommand,
       newIssueCommand,
+      openTelemetryCommand,
       detailManager,
       { dispose: () => issueService.dispose() }
     );
