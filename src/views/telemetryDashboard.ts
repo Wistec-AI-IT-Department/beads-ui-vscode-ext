@@ -48,7 +48,7 @@ export class TelemetryDashboardPanel {
   private _startPolling() {
     // Immediate update
     this._update();
-    // Poll
+    // Poll every 2 seconds for real-time updates
     this._interval = setInterval(async () => {
       await this._update();
     }, 2000);
@@ -73,14 +73,18 @@ export class TelemetryDashboardPanel {
       this._panel.webview.postMessage({
         command: 'updatedata',
         logs: logs,
-        stats: stats
+        stats: stats,
+        hasData: logs.length > 0
       });
     } catch (e: any) { // Type as any to access custom properties
-      console.error(e);
+      console.error('[Beads UI] Telemetry update error:', e);
+      // Show a friendly error instead of breaking the UI
       this._panel.webview.postMessage({
-        command: 'error',
-        message: e.message || String(e),
-        pathsSearched: e.pathsSearched || []
+        command: 'updatedata',
+        logs: [],
+        stats: { cpu: 0, mem: 0, activeAgents: 0, totalBurn: 0 },
+        hasData: false,
+        info: e.message || 'Waiting for telemetry data...'
       });
     }
   }

@@ -71,6 +71,8 @@ export function activate(context: vscode.ExtensionContext) {
     const openTelemetryCommand = vscode.commands.registerCommand(
       "beads-ui.openTelemetry",
       () => {
+        // Telemetry is now embedded in the main UI as a tab
+        // This command is kept for backwards compatibility
         TelemetryDashboardPanel.createOrShow(issueService);
       }
     );
@@ -86,6 +88,9 @@ export function activate(context: vscode.ExtensionContext) {
       detailManager,
       { dispose: () => issueService.dispose() }
     );
+
+    // Note: Telemetry is now embedded as a tab in the main Beads UI
+    // No need for separate auto-open
 
     console.log("[Beads UI] Extension activated successfully!");
   } catch (error) {

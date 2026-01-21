@@ -23,11 +23,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onView:beadsIssues.list",
-    "onCommand:beads-ui.refreshIssues",
-    "onCommand:beads-ui.toggleSort",
-    "onCommand:beads-ui.newIssue"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -109,7 +105,7 @@
     "@types/node": "22.x",
     "@types/sql.js": "^1.4.9",
     "@types/vscode": "^1.106.0",
-    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "copy-webpack-plugin": "^13.0.1",
     "eslint": "^9.39.1",

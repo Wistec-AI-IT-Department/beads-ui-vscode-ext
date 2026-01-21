@@ -7,16 +7,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script type="module" nonce="{{nonce}}" src="{{vscodeElementsUri}}"></script>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+    
     body {
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
       color: var(--vscode-foreground);
-      background-color: transparent;
+      background-color: var(--vscode-editor-background);
       margin: 0;
-      padding: 0.75rem;
-      box-sizing: border-box;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
+    /* ========== TAB NAVIGATION ========== */
+    .tab-nav {
+      display: flex;
+      background: var(--vscode-tab-inactiveBackground);
+      border-bottom: 1px solid var(--vscode-tab-border);
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.6rem 0.5rem;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--vscode-tab-inactiveForeground);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tab-btn:hover {
+      background: var(--vscode-tab-hoverBackground);
+      color: var(--vscode-tab-hoverForeground);
+    }
+
+    .tab-btn.active {
+      background: var(--vscode-tab-activeBackground);
+      color: var(--vscode-tab-activeForeground);
+      border-bottom-color: var(--vscode-focusBorder);
+    }
+
+    /* ========== TAB CONTENT PANELS ========== */
+    .tab-content {
+      flex: 1;
+      overflow: hidden;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tab-panel {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem;
+    }
+
+    /* ========== ISSUES TAB ========== */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -24,11 +84,12 @@
       margin-bottom: 0.75rem;
       align-items: flex-start;
       position: relative;
+      flex-shrink: 0;
     }
 
     .search-shell {
       flex: 1 1 auto;
-      min-width: 260px;
+      min-width: 200px;
       position: relative;
       display: flex;
       align-items: stretch;
@@ -52,21 +113,6 @@
       display: inline-flex;
       align-items: center;
       gap: 0.15rem;
-    }
-
-    .toolbar button {
-      flex: 0 0 auto;
-      padding: 0 0.8rem;
-      background: var(--vscode-button-secondaryBackground);
-      border: 1px solid var(--vscode-button-border, transparent);
-      color: var(--vscode-button-secondaryForeground);
-      border-radius: 4px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .toolbar button:hover {
-      background: var(--vscode-button-secondaryHoverBackground);
     }
 
     .issues {
@@ -114,7 +160,7 @@
     }
 
     .hidden {
-      display: none;
+      display: none !important;
     }
 
     .combo {
@@ -153,7 +199,7 @@
       padding: 0.75rem;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
       max-width: 360px;
-      z-index: 5;
+      z-index: 100;
     }
 
     .popover.hidden {
@@ -192,64 +238,397 @@
     .popover .combo {
       flex: 1 1 auto;
     }
+
+    /* ========== EPICS TAB ========== */
+    .epic-card {
+      padding: 0.75rem;
+      border: 1px solid var(--vscode-editorWidget-border);
+      border-radius: 6px;
+      background: var(--vscode-editorWidget-background);
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+    }
+
+    .epic-card:hover {
+      border-color: var(--vscode-focusBorder);
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .epic-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .epic-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .epic-progress {
+      height: 6px;
+      background: var(--vscode-progressBar-background);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .epic-progress-bar {
+      height: 100%;
+      background: var(--vscode-progressBar-background);
+      background: #00ff9d;
+      transition: width 0.3s ease;
+    }
+
+    .epic-stats {
+      font-size: 0.8rem;
+      color: var(--vscode-descriptionForeground);
+      margin-top: 0.35rem;
+    }
+
+    /* ========== BOARD TAB (Kanban) ========== */
+    .board-container {
+      display: flex;
+      gap: 0.75rem;
+      height: 100%;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .board-column {
+      flex: 0 0 200px;
+      min-width: 180px;
+      background: var(--vscode-sideBar-background);
+      border: 1px solid var(--vscode-editorWidget-border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      max-height: 100%;
+    }
+
+    .board-column-header {
+      padding: 0.5rem 0.75rem;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--vscode-editorWidget-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .board-column-count {
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+      font-size: 0.75rem;
+    }
+
+    .board-column-items {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .board-card {
+      padding: 0.5rem;
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-editorWidget-border);
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .board-card:hover {
+      border-color: var(--vscode-focusBorder);
+    }
+
+    .board-card-id {
+      font-size: 0.75rem;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 0.25rem;
+    }
+
+    /* ========== TELEMETRY TAB (n8n Style) ========== */
+    .telemetry-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #0d0d0d;
+      color: #00ff9d;
+      font-family: 'Segoe UI', monospace;
+      overflow: hidden;
+    }
+
+    .telemetry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #00ff9d;
+      padding: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .telemetry-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px #00ff9d;
+    }
+
+    .telemetry-stats {
+      display: flex;
+      gap: 15px;
+    }
+
+    .stat-box {
+      border: 1px solid #333;
+      padding: 4px 12px;
+      border-radius: 4px;
+      background: #111;
+      box-shadow: 0 0 5px rgba(0, 255, 157, 0.2);
+    }
+
+    .stat-label {
+      font-size: 0.7em;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 1em;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .telemetry-canvas-container {
+      position: relative;
+      flex: 1;
+      min-height: 150px;
+      border: 1px solid #222;
+      background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+      margin: 0.5rem;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .telemetry-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .telemetry-logs-title {
+      font-weight: bold;
+      padding: 0 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+      font-size: 0.75em;
+      flex-shrink: 0;
+    }
+
+    .telemetry-logs {
+      flex: 1;
+      min-height: 100px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 0.85em;
+      border: 1px solid #222;
+      background: #111;
+      margin: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .log-entry {
+      padding: 4px 10px;
+      border-bottom: 1px solid #222;
+      display: grid;
+      grid-template-columns: 70px 80px 70px 1fr 60px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .log-entry:hover {
+      background: #1a1a1a;
+    }
+
+    .color-normal { color: #00ff9d; }
+    .color-loop { color: #ff0055; text-shadow: 0 0 5px #ff0055; }
+    .color-retry { color: #ffff00; }
+    .color-complete { color: #00aaff; }
+
+    .telemetry-info {
+      text-align: center;
+      padding: 2rem;
+      color: #666;
+    }
+
+    /* Scrollbar for telemetry */
+    .telemetry-logs::-webkit-scrollbar { width: 6px; }
+    .telemetry-logs::-webkit-scrollbar-track { background: #111; }
+    .telemetry-logs::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    .telemetry-logs::-webkit-scrollbar-thumb:hover { background: #444; }
   </style>
 </head>
 
 <body>
-  <div class="toolbar">
-    <div class="search-shell">
-      <input id="beads-search" type="search" placeholder="Search by title, id, or text" />
-      <div class="search-actions">
-        <button id="beads-search-clear" class="icon-button" type="button" title="Clear search">✕</button>
-        <button id="beads-filter-toggle" class="icon-button" type="button" title="Filters & sort">☰</button>
-      </div>
-    </div>
-    <div id="beads-filter-panel" class="popover hidden" role="menu">
-      <div class="popover-header">
-        <strong>Filters & Sort</strong>
-        <button id="beads-filter-close" class="icon-button" type="button" aria-label="Close filters">✕</button>
-      </div>
-      <div class="popover-section">
-        <label for="beads-sort-field">Sort by</label>
-        <div class="sort-row">
-          <select id="beads-sort-field" class="combo">
-            <option value="created_at" selected>Created</option>
-            <option value="updated_at">Updated</option>
-            <option value="closed_at">Closed</option>
-            <option value="title">Title</option>
-            <option value="id">Ticket ID</option>
-          </select>
-          <button id="beads-sort-direction" class="icon-button" type="button" title="Toggle sort direction">▼</button>
+  <!-- Tab Navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="issues">Issues</button>
+    <button class="tab-btn" data-tab="epics">Epics</button>
+    <button class="tab-btn" data-tab="board">Board</button>
+    <button class="tab-btn" data-tab="telemetry">Telemetry</button>
+  </nav>
+
+  <!-- Issues Tab -->
+  <div class="tab-content active" id="tab-issues">
+    <div class="tab-panel">
+      <div class="toolbar">
+        <div class="search-shell">
+          <input id="beads-search" type="search" placeholder="Search by title, id, or text" />
+          <div class="search-actions">
+            <button id="beads-search-clear" class="icon-button" type="button" title="Clear search">✕</button>
+            <button id="beads-filter-toggle" class="icon-button" type="button" title="Filters & sort">☰</button>
+          </div>
+        </div>
+        <div id="beads-filter-panel" class="popover hidden" role="menu">
+          <div class="popover-header">
+            <strong>Filters & Sort</strong>
+            <button id="beads-filter-close" class="icon-button" type="button" aria-label="Close filters">✕</button>
+          </div>
+          <div class="popover-section">
+            <label for="beads-sort-field">Sort by</label>
+            <div class="sort-row">
+              <select id="beads-sort-field" class="combo">
+                <option value="created_at" selected>Created</option>
+                <option value="updated_at">Updated</option>
+                <option value="closed_at">Closed</option>
+                <option value="title">Title</option>
+                <option value="id">Ticket ID</option>
+              </select>
+              <button id="beads-sort-direction" class="icon-button" type="button" title="Toggle sort direction">▼</button>
+            </div>
+          </div>
+          <div class="popover-section">
+            <label>Status</label>
+            <vscode-multi-select id="beads-status">
+              <vscode-option value="open" selected>Open</vscode-option>
+              <vscode-option value="in_progress" selected>In Progress</vscode-option>
+              <vscode-option value="blocked" selected>Blocked</vscode-option>
+              <vscode-option value="closed" selected>Closed</vscode-option>
+            </vscode-multi-select>
+          </div>
+          <div class="popover-section">
+            <label>Type</label>
+            <vscode-multi-select id="beads-type">
+              <vscode-option value="bug" selected>Bug</vscode-option>
+              <vscode-option value="feature" selected>Feature</vscode-option>
+              <vscode-option value="task" selected>Task</vscode-option>
+              <vscode-option value="epic" selected>Epic</vscode-option>
+              <vscode-option value="chore" selected>Chore</vscode-option>
+            </vscode-multi-select>
+          </div>
         </div>
       </div>
-      <div class="popover-section">
-        <label>Status</label>
-        <vscode-multi-select id="beads-status">
-          <vscode-option value="open" selected>Open</vscode-option>
-          <vscode-option value="in_progress" selected>In Progress</vscode-option>
-          <vscode-option value="blocked" selected>Blocked</vscode-option>
-          <vscode-option value="closed" selected>Closed</vscode-option>
-        </vscode-multi-select>
-      </div>
-      <div class="popover-section">
-        <label>Type</label>
-        <vscode-multi-select id="beads-type">
-          <vscode-option value="bug" selected>Bug</vscode-option>
-          <vscode-option value="feature" selected>Feature</vscode-option>
-          <vscode-option value="task" selected>Task</vscode-option>
-          <vscode-option value="epic" selected>Epic</vscode-option>
-          <vscode-option value="chore" selected>Chore</vscode-option>
-        </vscode-multi-select>
+      <div id="beads-loading" class="loading hidden">Loading issues…</div>
+      <div id="beads-error" class="error hidden"></div>
+      <div id="beads-empty" class="empty hidden">No issues to display.</div>
+      <ul id="beads-list" class="issues" aria-live="polite"></ul>
+    </div>
+  </div>
+
+  <!-- Epics Tab -->
+  <div class="tab-content" id="tab-epics">
+    <div class="tab-panel">
+      <div id="epics-loading" class="loading hidden">Loading epics…</div>
+      <div id="epics-empty" class="empty hidden">No epics to display.</div>
+      <div id="epics-list"></div>
+    </div>
+  </div>
+
+  <!-- Board Tab (Kanban) -->
+  <div class="tab-content" id="tab-board">
+    <div class="tab-panel">
+      <div class="board-container" id="board-container">
+        <div class="board-column" data-status="open">
+          <div class="board-column-header">
+            Open <span class="board-column-count" id="board-open-count">0</span>
+          </div>
+          <div class="board-column-items" id="board-open"></div>
+        </div>
+        <div class="board-column" data-status="in_progress">
+          <div class="board-column-header">
+            In Progress <span class="board-column-count" id="board-progress-count">0</span>
+          </div>
+          <div class="board-column-items" id="board-progress"></div>
+        </div>
+        <div class="board-column" data-status="blocked">
+          <div class="board-column-header">
+            Blocked <span class="board-column-count" id="board-blocked-count">0</span>
+          </div>
+          <div class="board-column-items" id="board-blocked"></div>
+        </div>
+        <div class="board-column" data-status="closed">
+          <div class="board-column-header">
+            Closed <span class="board-column-count" id="board-closed-count">0</span>
+          </div>
+          <div class="board-column-items" id="board-closed"></div>
+        </div>
       </div>
     </div>
   </div>
-  <div id="beads-loading" class="loading hidden">Loading issues…</div>
-  <div id="beads-error" class="error hidden"></div>
-  <div id="beads-empty" class="empty hidden">No issues to display.</div>
-  <ul id="beads-list" class="issues" aria-live="polite"></ul>
+
+  <!-- Telemetry Tab (n8n Style) -->
+  <div class="tab-content" id="tab-telemetry">
+    <div class="telemetry-container">
+      <div class="telemetry-header">
+        <div class="telemetry-title">Echo Telemetry</div>
+        <div class="telemetry-stats">
+          <div class="stat-box">
+            <div class="stat-label">Agents</div>
+            <div class="stat-value" id="telemetry-agents">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Load</div>
+            <div class="stat-value" id="telemetry-load">0%</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Tokens</div>
+            <div class="stat-value" id="telemetry-burn">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="telemetry-canvas-container">
+        <canvas id="telemetry-canvas" class="telemetry-canvas"></canvas>
+      </div>
+      <div class="telemetry-logs-title">Real-time Reasoning Logs</div>
+      <div class="telemetry-logs" id="telemetry-logs">
+        <div class="telemetry-info" id="telemetry-info">Waiting for telemetry data...</div>
+      </div>
+    </div>
+  </div>
+
   <script nonce="{{nonce}}">
     (function () {
       const vscode = acquireVsCodeApi();
+      
+      // ========== STATE ==========
+      let issues = [];
+      let telemetryLogs = [];
+      let telemetryNodes = {};
+      let telemetryAnimationId = null;
+      
+      // ========== DOM REFERENCES ==========
+      // Tabs
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const tabContents = document.querySelectorAll('.tab-content');
+      
+      // Issues
       const searchInput = document.getElementById('beads-search');
       const searchClear = document.getElementById('beads-search-clear');
       const filterToggle = document.getElementById('beads-filter-toggle');
@@ -263,8 +642,28 @@
       const emptyEl = document.getElementById('beads-empty');
       const errorEl = document.getElementById('beads-error');
       const loadingEl = document.getElementById('beads-loading');
-      let issues = [];
+      
+      // Epics
+      const epicsListEl = document.getElementById('epics-list');
+      const epicsEmptyEl = document.getElementById('epics-empty');
+      const epicsLoadingEl = document.getElementById('epics-loading');
+      
+      // Board
+      const boardOpenEl = document.getElementById('board-open');
+      const boardProgressEl = document.getElementById('board-progress');
+      const boardBlockedEl = document.getElementById('board-blocked');
+      const boardClosedEl = document.getElementById('board-closed');
+      
+      // Telemetry
+      const telemetryCanvas = document.getElementById('telemetry-canvas');
+      const telemetryCtx = telemetryCanvas.getContext('2d');
+      const telemetryLogsEl = document.getElementById('telemetry-logs');
+      const telemetryInfoEl = document.getElementById('telemetry-info');
+      const telemetryAgentsEl = document.getElementById('telemetry-agents');
+      const telemetryLoadEl = document.getElementById('telemetry-load');
+      const telemetryBurnEl = document.getElementById('telemetry-burn');
 
+      // ========== HELPERS ==========
       function escapeHtml(value) {
         return String(value || '')
           .replace(/&/g, '&amp;')
@@ -285,9 +684,38 @@
         return [toLower(val)];
       };
 
-            function renderList() {
+      // ========== TAB SWITCHING ==========
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tabId = btn.dataset.tab;
+          
+          // Update buttons
+          tabBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          // Update content
+          tabContents.forEach(content => {
+            content.classList.remove('active');
+            if (content.id === 'tab-' + tabId) {
+              content.classList.add('active');
+            }
+          });
+          
+          // Special handling for telemetry tab
+          if (tabId === 'telemetry') {
+            resizeTelemetryCanvas();
+            startTelemetryAnimation();
+          } else {
+            stopTelemetryAnimation();
+          }
+        });
+      });
+
+      // ========== ISSUES TAB ==========
+      function renderIssuesList() {
         const rows = Array.isArray(issues) ? issues : [];
         listEl.innerHTML = '';
+        
         if (!rows.length) {
           emptyEl.classList.remove('hidden');
           return;
@@ -299,27 +727,252 @@
           li.className = 'issue';
           li.tabIndex = 0;
           const status = toLower(issue.status) || 'unknown';
-          const priority = issue.priority !== undefined ? `P${issue.priority}` : '';
+          const priority = issue.priority !== undefined ? 'P' + issue.priority : '';
           const type = issue.type ? String(issue.type) : '';
-          const assignee = issue.assignee ? `@${issue.assignee}` : '';
+          const assignee = issue.assignee ? '@' + issue.assignee : '';
           const meta = [status, priority, type, assignee].filter(Boolean).join(' • ');
-          li.innerHTML = `
-            <div class="issue-title">${escapeHtml(issue.id || 'unknown')} · ${escapeHtml(issue.title || 'Untitled')}</div>
-            <div class="issue-meta">${escapeHtml(meta)}</div>
-          `;
+          li.innerHTML = '<div class="issue-title">' + escapeHtml(issue.id || 'unknown') + ' · ' + escapeHtml(issue.title || 'Untitled') + '</div>' +
+            '<div class="issue-meta">' + escapeHtml(meta) + '</div>';
           li.addEventListener('click', () => openIssue(issue.id));
           li.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-              openIssue(issue.id);
-            }
+            if (event.key === 'Enter') openIssue(issue.id);
           });
           listEl.appendChild(li);
         });
       }
-function openIssue(id) {
-        if (!id) {
+
+      // ========== EPICS TAB ==========
+      function renderEpicsList() {
+        const epics = issues.filter(i => toLower(i.type) === 'epic' || toLower(i.issue_type) === 'epic');
+        epicsListEl.innerHTML = '';
+        
+        if (!epics.length) {
+          epicsEmptyEl.classList.remove('hidden');
           return;
         }
+        epicsEmptyEl.classList.add('hidden');
+
+        epics.forEach(epic => {
+          // Count subtasks (issues that start with this epic's ID + ".")
+          const subtasks = issues.filter(i => i.id && i.id.startsWith(epic.id + '.'));
+          const closedSubtasks = subtasks.filter(s => toLower(s.status) === 'closed').length;
+          const totalSubtasks = subtasks.length;
+          const progress = totalSubtasks > 0 ? Math.round((closedSubtasks / totalSubtasks) * 100) : 0;
+
+          const card = document.createElement('div');
+          card.className = 'epic-card';
+          card.innerHTML = 
+            '<div class="epic-header">' +
+              '<span class="epic-title">' + escapeHtml(epic.id) + ' · ' + escapeHtml(epic.title) + '</span>' +
+            '</div>' +
+            '<div class="epic-progress"><div class="epic-progress-bar" style="width: ' + progress + '%"></div></div>' +
+            '<div class="epic-stats">' + closedSubtasks + ' / ' + totalSubtasks + ' subtasks complete (' + progress + '%)</div>';
+          card.addEventListener('click', () => openIssue(epic.id));
+          epicsListEl.appendChild(card);
+        });
+      }
+
+      // ========== BOARD TAB (Kanban) ==========
+      function renderBoard() {
+        const statuses = {
+          open: [],
+          in_progress: [],
+          blocked: [],
+          closed: []
+        };
+
+        issues.forEach(issue => {
+          const status = toLower(issue.status);
+          if (statuses[status]) {
+            statuses[status].push(issue);
+          } else if (status === 'in progress') {
+            statuses.in_progress.push(issue);
+          } else {
+            statuses.open.push(issue); // Default to open
+          }
+        });
+
+        // Update counts
+        document.getElementById('board-open-count').textContent = statuses.open.length;
+        document.getElementById('board-progress-count').textContent = statuses.in_progress.length;
+        document.getElementById('board-blocked-count').textContent = statuses.blocked.length;
+        document.getElementById('board-closed-count').textContent = statuses.closed.length;
+
+        // Render columns
+        renderBoardColumn(boardOpenEl, statuses.open);
+        renderBoardColumn(boardProgressEl, statuses.in_progress);
+        renderBoardColumn(boardBlockedEl, statuses.blocked);
+        renderBoardColumn(boardClosedEl, statuses.closed);
+      }
+
+      function renderBoardColumn(container, items) {
+        container.innerHTML = '';
+        items.forEach(issue => {
+          const card = document.createElement('div');
+          card.className = 'board-card';
+          card.innerHTML = '<div class="board-card-id">' + escapeHtml(issue.id) + '</div>' +
+            '<div>' + escapeHtml(issue.title || 'Untitled') + '</div>';
+          card.addEventListener('click', () => openIssue(issue.id));
+          container.appendChild(card);
+        });
+      }
+
+      // ========== TELEMETRY TAB ==========
+      const TELEMETRY_STAGES = {
+        'Analysis': 1,
+        'Execution': 2,
+        'Healing': 1.5,
+        'Completion': 3,
+        'Activity': 1
+      };
+
+      function resizeTelemetryCanvas() {
+        const container = telemetryCanvas.parentElement;
+        telemetryCanvas.width = container.clientWidth;
+        telemetryCanvas.height = container.clientHeight;
+      }
+
+      function updateTelemetry(logs, stats) {
+        telemetryLogs = logs || [];
+        
+        // Update stats
+        telemetryAgentsEl.textContent = stats?.activeAgents || 0;
+        telemetryLoadEl.textContent = (stats?.mem || 0) + '%';
+        telemetryBurnEl.textContent = stats?.totalBurn || 0;
+
+        // Update nodes for animation
+        const activeAgents = [...new Set(telemetryLogs.map(l => l.agent_id))].sort();
+        const laneHeight = Math.min(50, (telemetryCanvas.height - 20) / (activeAgents.length + 1));
+
+        activeAgents.forEach((agentId, index) => {
+          const latestLog = telemetryLogs.find(l => l.agent_id === agentId);
+          if (!telemetryNodes[agentId]) {
+            telemetryNodes[agentId] = { x: 50, y: (index + 1) * laneHeight + 10, targetX: 50, label: agentId, color: '#00ff9d' };
+          }
+
+          const step = TELEMETRY_STAGES[latestLog?.node_type] || 0;
+          const segment = (telemetryCanvas.width - 100) / 4;
+
+          telemetryNodes[agentId].targetX = 50 + (step * segment);
+          telemetryNodes[agentId].y = (index + 1) * laneHeight + 10;
+          telemetryNodes[agentId].state = latestLog?.node_type || 'Idle';
+          telemetryNodes[agentId].branch = latestLog?.logic_branch || 'Normal';
+          telemetryNodes[agentId].bead = latestLog?.bead_id || 'N/A';
+        });
+
+        // Render logs
+        renderTelemetryLogs();
+      }
+
+      function renderTelemetryLogs() {
+        if (!telemetryLogs.length) {
+          telemetryInfoEl.classList.remove('hidden');
+          return;
+        }
+        telemetryInfoEl.classList.add('hidden');
+
+        // Keep only log entries (remove info message)
+        const existingLogs = telemetryLogsEl.querySelectorAll('.log-entry');
+        if (existingLogs.length === telemetryLogs.length) return; // No change
+
+        let html = '';
+        telemetryLogs.forEach(log => {
+          let colorClass = 'color-normal';
+          if (log.logic_branch === 'Loop') colorClass = 'color-loop';
+          else if (log.node_type === 'Retry') colorClass = 'color-retry';
+          else if (log.node_type === 'Completion') colorClass = 'color-complete';
+
+          const timeStr = log.timestamp ? log.timestamp.split('T')[1]?.substring(0, 8) || '--:--:--' : '--:--:--';
+
+          html += '<div class="log-entry">' +
+            '<span class="' + colorClass + '">' + escapeHtml(timeStr) + '</span>' +
+            '<span class="' + colorClass + '">' + escapeHtml(log.agent_id) + '</span>' +
+            '<span class="' + colorClass + '">' + escapeHtml(log.bead_id) + '</span>' +
+            '<span class="' + colorClass + '">' + escapeHtml(log.node_type) + '</span>' +
+            '<span class="' + colorClass + '">' + (log.token_burn || 0) + ' tk</span>' +
+            '</div>';
+        });
+        telemetryLogsEl.innerHTML = html + '<div class="telemetry-info hidden" id="telemetry-info">Waiting for telemetry data...</div>';
+      }
+
+      function drawTelemetry() {
+        const ctx = telemetryCtx;
+        ctx.fillStyle = 'rgba(13, 13, 13, 0.2)';
+        ctx.fillRect(0, 0, telemetryCanvas.width, telemetryCanvas.height);
+
+        Object.keys(telemetryNodes).forEach(agentId => {
+          const node = telemetryNodes[agentId];
+          // Animation lerp
+          node.x += (node.targetX - node.x) * 0.05;
+
+          // Lane line
+          ctx.strokeStyle = '#222';
+          ctx.beginPath();
+          ctx.moveTo(0, node.y);
+          ctx.lineTo(telemetryCanvas.width, node.y);
+          ctx.stroke();
+
+          // Connecting line
+          ctx.strokeStyle = '#333';
+          ctx.beginPath();
+          ctx.moveTo(50, node.y);
+          ctx.lineTo(node.x, node.y);
+          ctx.stroke();
+
+          // Node circle
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
+
+          let glowColor = '#00ff9d';
+          if (node.branch === 'Loop') glowColor = '#ff0055';
+          else if (node.state === 'Healing') glowColor = '#ffff00';
+          else if (node.state === 'Completion') glowColor = '#00aaff';
+
+          ctx.fillStyle = glowColor;
+          ctx.shadowColor = glowColor;
+          ctx.shadowBlur = 12;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Agent label
+          ctx.fillStyle = '#fff';
+          ctx.font = '10px Segoe UI';
+          ctx.fillText(agentId + ' [' + node.bead + ']', 5, node.y + 3);
+
+          // Status label
+          ctx.fillStyle = '#888';
+          ctx.font = '9px Segoe UI';
+          ctx.fillText(node.state, node.x - 15, node.y - 12);
+
+          // Loop indicator
+          if (node.branch === 'Loop') {
+            ctx.strokeStyle = '#ff0055';
+            ctx.beginPath();
+            ctx.arc(node.x, node.y - 10, 6, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        });
+
+        telemetryAnimationId = requestAnimationFrame(drawTelemetry);
+      }
+
+      function startTelemetryAnimation() {
+        if (!telemetryAnimationId) {
+          resizeTelemetryCanvas();
+          drawTelemetry();
+        }
+      }
+
+      function stopTelemetryAnimation() {
+        if (telemetryAnimationId) {
+          cancelAnimationFrame(telemetryAnimationId);
+          telemetryAnimationId = null;
+        }
+      }
+
+      // ========== COMMON FUNCTIONS ==========
+      function openIssue(id) {
+        if (!id) return;
         vscode.postMessage({ type: 'openIssue', id });
       }
 
@@ -341,38 +994,36 @@ function openIssue(id) {
         }
       }
 
+      function renderAll() {
+        renderIssuesList();
+        renderEpicsList();
+        renderBoard();
+      }
+
+      // ========== MESSAGE HANDLERS ==========
       window.addEventListener('message', (event) => {
-        switch (event.data?.type) {
+        const data = event.data;
+        switch (data?.type) {
           case 'issues':
-            issues = Array.isArray(event.data.payload) ? event.data.payload : [];
+            issues = Array.isArray(data.payload) ? data.payload : [];
             setError('');
-            renderList();
+            renderAll();
+            break;
+          case 'telemetry':
+            updateTelemetry(data.logs, data.stats);
             break;
           case 'error':
-            setError(event.data.payload || 'Unable to load issues');
+            setError(data.payload || 'Unable to load issues');
             break;
           case 'loading':
-            setLoading(Boolean(event.data.payload));
+            setLoading(Boolean(data.payload));
             break;
           default:
             break;
         }
       });
 
-      customElements.whenDefined('vscode-multi-select').then(() => {
-        statusSelect.addEventListener('change', renderList);
-        typeSelect.addEventListener('change', renderList);
-      });
-
-      sortField.addEventListener('change', renderList);
-      sortDirectionBtn.dataset.dir = 'desc';
-      sortDirectionBtn.addEventListener('click', () => {
-        const next = (sortDirectionBtn.dataset.dir || 'desc') === 'desc' ? 'asc' : 'desc';
-        sortDirectionBtn.dataset.dir = next;
-        sortDirectionBtn.textContent = next === 'asc' ? '▲' : '▼';
-        renderList();
-      });
-
+      // ========== FILTER HANDLERS ==========
       const sendFilters = () => {
         vscode.postMessage({
           type: 'filtersChanged',
@@ -416,6 +1067,14 @@ function openIssue(id) {
         typeSelect.addEventListener('change', sendFilters);
       });
 
+      // ========== RESIZE HANDLER ==========
+      window.addEventListener('resize', () => {
+        if (document.getElementById('tab-telemetry').classList.contains('active')) {
+          resizeTelemetryCanvas();
+        }
+      });
+
+      // ========== INIT ==========
       vscode.postMessage({ type: 'ready' });
     })();
   </script>

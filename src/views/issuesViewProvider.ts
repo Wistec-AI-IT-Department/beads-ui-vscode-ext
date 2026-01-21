@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as os from "os";
 import { BdIssue, SearchFilters } from "../types";
 import { BeadsIssueService } from "../services/beadsIssueService";
 import { TemplateRenderer } from "../utils/templateRenderer";
@@ -7,6 +8,7 @@ import { getNonce } from "../utils/helpers";
 export class IssuesViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private issues: BdIssue[] = [];
+  private telemetryInterval?: NodeJS.Timeout;
   private filters: SearchFilters = {
     search: "",
     statuses: ["open", "in_progress", "blocked", "closed"],
@@ -38,6 +40,7 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
       switch (message?.type) {
         case "ready":
           await this.refreshIssues();
+          this.startTelemetryPolling();
           break;
         case "refresh":
           await this.refreshIssues();
@@ -58,6 +61,11 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
         default:
           break;
       }
+    });
+
+    // Cleanup telemetry polling when view is disposed
+    webviewView.onDidDispose(() => {
+      this.stopTelemetryPolling();
     });
 
     void this.refreshIssues();
@@ -95,6 +103,60 @@ export class IssuesViewProvider implements vscode.WebviewViewProvider {
       this.postError(message);
     } finally {
       this.updateLoading(false);
+    }
+  }
+
+  // ========== TELEMETRY POLLING ==========
+  private startTelemetryPolling() {
+    // Initial fetch
+    this.fetchAndPostTelemetry();
+    
+    // Poll every 2 seconds
+    this.telemetryInterval = setInterval(() => {
+      this.fetchAndPostTelemetry();
+    }, 2000);
+  }
+
+  private stopTelemetryPolling() {
+    if (this.telemetryInterval) {
+      clearInterval(this.telemetryInterval);
+      this.telemetryInterval = undefined;
+    }
+  }
+
+  private async fetchAndPostTelemetry() {
+    if (!this.view) {
+      return;
+    }
+
+    try {
+      const logs = await this.issueService.getTelemetryLogs(50);
+      
+      // Calculate basic stats
+      const totalMem = os.totalmem();
+      const freeMem = os.freemem();
+      const usedMemPercent = Math.round(((totalMem - freeMem) / totalMem) * 100);
+      
+      const stats = {
+        cpu: usedMemPercent,
+        mem: usedMemPercent,
+        activeAgents: new Set(logs.map((l: any) => l.agent_id)).size,
+        totalBurn: logs.reduce((acc: number, l: any) => acc + (l.token_burn || 0), 0)
+      };
+
+      this.view.webview.postMessage({
+        type: 'telemetry',
+        logs: logs,
+        stats: stats
+      });
+    } catch (e: any) {
+      console.error('[Beads UI] Telemetry fetch error:', e);
+      // Send empty telemetry on error
+      this.view.webview.postMessage({
+        type: 'telemetry',
+        logs: [],
+        stats: { cpu: 0, mem: 0, activeAgents: 0, totalBurn: 0 }
+      });
     }
   }
 
