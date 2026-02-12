@@ -1,0 +1,21 @@
+{
+  "apps": [{
+    "name": "beads-ui",
+    "script": "/root/.openclaw/workspace/beads-ui/server/index.js",
+    "cwd": "/root/.openclaw/workspace/riaan-issues",
+    "args": "--host 0.0.0.0 --port 3000",
+    "env": {
+      "HOST": "0.0.0.0",
+      "PORT": "3000",
+      "NODE_ENV": "production"
+    },
+    "instances": 1,
+    "autorestart": true,
+    "watch": false,
+    "max_memory_restart": "500M",
+    "log_date_format": "YYYY-MM-DD HH:mm:ss",
+    "error_file": "/root/.openclaw/logs/beads-ui-error.log",
+    "out_file": "/root/.openclaw/logs/beads-ui-out.log",
+    "merge_logs": true
+  }]
+}

@@ -1,0 +1,81 @@
+{
+  "name": "beads-ui",
+  "version": "0.9.1",
+  "description": "Local UI for Beads — Collaborate on issues with your coding agent.",
+  "keywords": [
+    "agent",
+    "issue-tracker",
+    "local-first",
+    "ai-tools"
+  ],
+  "homepage": "https://github.com/mantoni/beads-ui",
+  "author": "Maximilian Antoni <mail@maxantoni.de>",
+  "type": "module",
+  "bin": {
+    "bdui": "bin/bdui.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "all": "npm run lint && npm run tsc && npm test && npm run prettier:check",
+    "start": "node server/index.js --debug",
+    "build": "node scripts/build-frontend.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "tsc": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint --ext .js .",
+    "prettier:write": "prettier --write .",
+    "prettier:check": "prettier --check .",
+    "preversion": "npm run all",
+    "version": "changes --commits --footer",
+    "postversion": "git push --follow-tags && npm publish",
+    "prepack": "npm run build",
+    "postpack": "rm app/main.bundle.js app/main.bundle.js.map"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "debug": "^4.4.3",
+    "dompurify": "^3.3.0",
+    "express": "^5.2.1",
+    "lit-html": "^3.3.1",
+    "marked": "^17.0.1",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@studio/changes": "^3.0.0",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.0",
+    "@types/debug": "^4.1.12",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.19.1",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.27.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsdoc": "^61.4.1",
+    "eslint-plugin-n": "^17.9.0",
+    "globals": "^16.5.0",
+    "jsdom": "^27.2.0",
+    "prettier": "^3.7.4",
+    "typescript": "^5.6.3",
+    "vitest": "^4.0.15"
+  },
+  "files": [
+    "app/index.html",
+    "app/styles.css",
+    "app/main.bundle.js",
+    "app/main.bundle.js.map",
+    "app/protocol.js",
+    "bin",
+    "server",
+    "CHANGES.md",
+    "LICENSE",
+    "README.md",
+    "!**/*.test.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mantoni/beads-ui.git"
+  }
+}

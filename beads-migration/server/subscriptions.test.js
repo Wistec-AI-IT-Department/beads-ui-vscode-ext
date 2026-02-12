@@ -1,0 +1,128 @@
+import { describe, expect, test, vi } from 'vitest';
+import {
+  SubscriptionRegistry,
+  computeDelta,
+  keyOf,
+  toItemsMap
+} from './subscriptions.js';
+
+describe('subscriptions registry', () => {
+  test('keyOf sorts params for stable keys', () => {
+    const a = keyOf({ type: 'list', params: { status: 'open', limit: 50 } });
+    const b = keyOf({ type: 'list', params: { limit: 50, status: 'open' } });
+    expect(a).toBe('list?limit=50&status=open');
+    expect(b).toBe('list?limit=50&status=open');
+  });
+
+  test('computeDelta returns added/updated/removed', () => {
+    const prev = toItemsMap([
+      { id: 'UI-1', updated_at: 1 },
+      { id: 'UI-2', updated_at: 2 }
+    ]);
+    const next = toItemsMap([
+      { id: 'UI-2', updated_at: 3 },
+      { id: 'UI-3', updated_at: 1 }
+    ]);
+    const d = computeDelta(prev, next);
+    expect(d.added).toEqual(['UI-3']);
+    expect(d.updated).toEqual(['UI-2']);
+    expect(d.removed).toEqual(['UI-1']);
+  });
+
+  test('computeDelta returns no changes for unchanged maps', () => {
+    const prev = toItemsMap([
+      { id: 'A', updated_at: 10, closed_at: null },
+      { id: 'B', updated_at: 20, closed_at: null }
+    ]);
+    const next = toItemsMap([
+      { id: 'A', updated_at: 10, closed_at: null },
+      { id: 'B', updated_at: 20, closed_at: null }
+    ]);
+    const d = computeDelta(prev, next);
+    expect(d.added).toEqual([]);
+    expect(d.updated).toEqual([]);
+    expect(d.removed).toEqual([]);
+  });
+
+  test('computeDelta handles empty sets', () => {
+    const empty = toItemsMap([]);
+    const some = toItemsMap([
+      { id: 'X', updated_at: 1, closed_at: null },
+      { id: 'Y', updated_at: 2, closed_at: null }
+    ]);
+
+    const d1 = computeDelta(empty, some);
+    expect(d1.added.sort()).toEqual(['X', 'Y']);
+    expect(d1.updated).toEqual([]);
+    expect(d1.removed).toEqual([]);
+
+    const d2 = computeDelta(some, empty);
+    expect(d2.added).toEqual([]);
+    expect(d2.updated).toEqual([]);
+    expect(d2.removed.sort()).toEqual(['X', 'Y']);
+  });
+
+  test('computeDelta returns only updates when ids unchanged', () => {
+    const prev = toItemsMap([
+      { id: 'A', updated_at: 1, closed_at: null },
+      { id: 'B', updated_at: 2, closed_at: null }
+    ]);
+    const next = toItemsMap([
+      { id: 'A', updated_at: 3, closed_at: null },
+      { id: 'B', updated_at: 5, closed_at: null }
+    ]);
+    const d = computeDelta(prev, next);
+    expect(d.added).toEqual([]);
+    expect(d.removed).toEqual([]);
+    expect(d.updated.sort()).toEqual(['A', 'B']);
+  });
+
+  test('attach/detach and disconnect-driven eviction', () => {
+    const reg = new SubscriptionRegistry();
+    /** @type {any} */
+    const ws_a = { OPEN: 1, readyState: 1, send: vi.fn() };
+    /** @type {any} */
+    const ws_b = { OPEN: 1, readyState: 1, send: vi.fn() };
+
+    const spec = { type: 'list', params: { status: 'open' } };
+    const { key } = reg.attach(spec, ws_a);
+    reg.attach(spec, ws_b);
+
+    const entry1 = reg.get(key);
+    expect(entry1 && entry1.subscribers.size).toBe(2);
+
+    const removed_a = reg.detach(spec, ws_a);
+    expect(removed_a).toBe(true);
+    const entry2 = reg.get(key);
+    expect(entry2 && entry2.subscribers.size).toBe(1);
+
+    // Disconnecting B should sweep it and remove empty entry
+    reg.onDisconnect(ws_b);
+    const entry3 = reg.get(key);
+    expect(entry3).toBeNull();
+  });
+
+  test('applyItems stores map and returns correct delta', () => {
+    const reg = new SubscriptionRegistry();
+    /** @type {any} */
+    const ws = { OPEN: 1, readyState: 1, send: vi.fn() };
+    const spec = { type: 'list', params: { ready: true } };
+    const { key } = reg.attach(spec, ws);
+
+    const d1 = reg.applyItems(key, [
+      { id: 'A', updated_at: 1 },
+      { id: 'B', updated_at: 1 }
+    ]);
+    expect(d1.added.sort()).toEqual(['A', 'B']);
+    expect(d1.updated).toEqual([]);
+    expect(d1.removed).toEqual([]);
+
+    const d2 = reg.applyItems(key, [
+      { id: 'B', updated_at: 2 },
+      { id: 'C', updated_at: 1 }
+    ]);
+    expect(d2.added).toEqual(['C']);
+    expect(d2.updated).toEqual(['B']);
+    expect(d2.removed).toEqual(['A']);
+  });
+});
